@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { TabBar } from './components/TabBar'
-import { useData, useNeedsHousehold } from './lib/data'
+import { useAuth } from './lib/auth'
+import { DataProvider, useData } from './lib/data'
 import { usePrefs } from './lib/prefs'
 import { routeTab, useRoute } from './lib/router'
 import { Home } from './screens/Home'
@@ -9,7 +10,7 @@ import { RecipeEditor } from './screens/RecipeEditor'
 import { Recipes } from './screens/Recipes'
 import { Settings } from './screens/Settings'
 import { ShoppingList } from './screens/ShoppingList'
-import { Welcome } from './screens/Welcome'
+import { NoAccess, SignIn } from './screens/SignIn'
 
 export function useThemeEffect() {
   const { theme } = usePrefs()
@@ -29,20 +30,33 @@ export function useThemeEffect() {
   }, [theme])
 }
 
+const Spinner = () => (
+  <div className="boot-screen">
+    <div className="spinner" aria-label="Cargando" />
+  </div>
+)
+
 export function Shell() {
-  const needsHousehold = useNeedsHousehold()
-  if (needsHousehold) return <Welcome />
-  return <Main />
+  const { state } = useAuth()
+  if (state.status === 'loading') return <Spinner />
+  if (state.status === 'signed-out') return <SignIn />
+  return (
+    <DataProvider>
+      <Main />
+    </DataProvider>
+  )
 }
 
 function Main() {
   const route = useRoute()
-  const { items, ready } = useData()
+  const { items, ready, sync } = useData()
   const pending = items.filter((i) => !i.checked).length
   const hideTabs = route.name === 'recipe-new' || route.name === 'recipe-edit'
 
+  if (sync === 'denied') return <NoAccess />
+
   let screen
-  if (!ready) screen = <div className="boot-screen"><div className="spinner" aria-label="Cargando" /></div>
+  if (!ready) screen = <Spinner />
   else
     switch (route.name) {
       case 'list':

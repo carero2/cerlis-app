@@ -1,25 +1,31 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAuth, signInAnonymously, type User } from 'firebase/auth'
 import {
-  arrayUnion,
+  GoogleAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  type User,
+} from 'firebase/auth'
+import {
   collection,
   deleteDoc,
   deleteField,
   doc,
-  getDoc,
   initializeFirestore,
   onSnapshot,
   persistentLocalCache,
   persistentMultipleTabManager,
-  serverTimestamp,
   setDoc,
   updateDoc,
   writeBatch,
   type Firestore,
+  type FirestoreError,
 } from 'firebase/firestore'
-import { householdCode, normalizeCode, uid } from '../ids'
-import type { Household, Recipe, ShoppingItem, SyncState } from '../types'
-import type { DataStore, HouseholdService } from './types'
+import { uid } from '../ids'
+import type { Recipe, ShoppingItem, SyncState } from '../types'
+import type { DataStore } from './types'
 import type { FirebaseConfig } from './config'
 
 let app: FirebaseApp | null = null
@@ -43,60 +49,53 @@ function init(config: FirebaseConfig) {
   return { app: app!, db: db! }
 }
 
-/** Sesión anónima persistente. Más adelante se podrá vincular a Google. */
-export async function ensureUser(config: FirebaseConfig): Promise<User> {
-  const { app } = init(config)
-  const auth = getAuth(app)
-  await auth.authStateReady()
-  if (auth.currentUser) return auth.currentUser
-  const cred = await signInAnonymously(auth)
-  return cred.user
+// ---------- Autenticación ----------
+
+export function watchUser(config: FirebaseConfig, cb: (user: User | null) => void) {
+  return onAuthStateChanged(getAuth(init(config).app), cb)
 }
 
-export function createHouseholdService(config: FirebaseConfig): HouseholdService {
-  const { db } = init(config)
-
-  async function get(code: string): Promise<Household | null> {
-    const snap = await getDoc(doc(db, 'households', normalizeCode(code)))
-    if (!snap.exists()) return null
-    return { id: snap.id, name: (snap.data().name as string) ?? 'Nuestro hogar' }
-  }
-
-  return {
-    get,
-    async create(name) {
-      const user = await ensureUser(config)
-      const id = householdCode()
-      await setDoc(doc(db, 'households', id), {
-        name,
-        members: [user.uid],
-        createdAt: serverTimestamp(),
-      })
-      return { id, name }
-    },
-    async join(code) {
-      const user = await ensureUser(config)
-      const id = normalizeCode(code)
-      const existing = await get(id)
-      if (!existing) throw new Error('No existe ningún hogar con ese código.')
-      await updateDoc(doc(db, 'households', id), { members: arrayUnion(user.uid) })
-      return existing
-    },
-    async rename(code, name) {
-      await updateDoc(doc(db, 'households', normalizeCode(code)), { name })
-    },
+/**
+ * Inicio de sesión con Google. Se llama directamente desde el toque del
+ * usuario para que Safari no bloquee la ventana emergente.
+ */
+export async function signInWithGoogle(config: FirebaseConfig) {
+  const auth = getAuth(init(config).app)
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  try {
+    await signInWithPopup(auth, provider)
+  } catch (e) {
+    const code = (e as { code?: string }).code
+    // Si el navegador no permite ventanas emergentes, probamos con redirección.
+    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      await signInWithRedirect(auth, provider)
+      return
+    }
+    throw e
   }
 }
 
-export function createFirebaseStore(config: FirebaseConfig, householdId: string): DataStore {
+export function signOutUser(config: FirebaseConfig) {
+  return signOut(getAuth(init(config).app))
+}
+
+// ---------- Datos ----------
+
+/**
+ * Lista y recetas compartidas. El acceso lo controlan las reglas de
+ * Firestore: solo las cuentas de Google permitidas pueden leer o escribir.
+ */
+export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const { db } = init(config)
-  const itemsCol = collection(db, 'households', householdId, 'items')
-  const recipesCol = collection(db, 'households', householdId, 'recipes')
+  const itemsCol = collection(db, 'items')
+  const recipesCol = collection(db, 'recipes')
 
   const syncListeners = new Set<(s: SyncState) => void>()
   let sync: SyncState = navigator.onLine ? 'connecting' : 'offline'
   const setSync = (s: SyncState) => {
-    if (s === sync) return
+    // "Sin acceso" es definitivo para esta sesión.
+    if (s === sync || sync === 'denied') return
     sync = s
     syncListeners.forEach((cb) => cb(s))
   }
@@ -108,6 +107,10 @@ export function createFirebaseStore(config: FirebaseConfig, householdId: string)
   const trackMeta = (fromCache: boolean) => {
     if (!navigator.onLine) setSync('offline')
     else setSync(fromCache ? 'connecting' : 'online')
+  }
+  const onError = (e: FirestoreError) => {
+    console.error(e)
+    setSync(e.code === 'permission-denied' ? 'denied' : 'error')
   }
 
   return {
@@ -121,7 +124,7 @@ export function createFirebaseStore(config: FirebaseConfig, householdId: string)
           trackMeta(snap.metadata.fromCache)
           cb(snap.docs.map((d) => ({ ...(d.data() as Omit<ShoppingItem, 'id'>), id: d.id })))
         },
-        () => setSync('error'),
+        onError,
       )
     },
     async addItems(items) {
@@ -150,7 +153,7 @@ export function createFirebaseStore(config: FirebaseConfig, householdId: string)
       return onSnapshot(
         recipesCol,
         (snap) => cb(snap.docs.map((d) => ({ ...(d.data() as Omit<Recipe, 'id'>), id: d.id }))),
-        () => setSync('error'),
+        onError,
       )
     },
     async createRecipe(draft) {

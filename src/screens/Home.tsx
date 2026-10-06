@@ -23,7 +23,7 @@ const dateFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeri
 
 export function Home() {
   const { items, recipes, sync } = useData()
-  const { name, householdName } = usePrefs()
+  const { name } = usePrefs()
   const [seed, setSeed] = useState(() => Math.random())
 
   const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
@@ -55,8 +55,6 @@ export function Home() {
         </span>
       }
     >
-      {householdName && <p className="home-household">🏡 {householdName}</p>}
-
       {/* Lista de la compra */}
       <section className="home-card home-list">
         <button className="home-card-head" onClick={() => switchTab(paths.list)}>

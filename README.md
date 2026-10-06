@@ -11,7 +11,7 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
   tiene **ingredientes** y **preparación**; con un toque mandas los
   ingredientes que os faltan a la lista. Modo cocina para que no se apague la
   pantalla.
-- **Ajustes**: tu nombre, hogar compartido (código para invitar), tema
+- **Ajustes**: tu nombre, cuenta de Google, estado de sincronización, tema
   claro/oscuro y copia de seguridad.
 
 ## Puesta en marcha
@@ -29,41 +29,35 @@ conectar Firebase.
 ## Sincronización entre dispositivos (Firebase)
 
 Se usa **Cloud Firestore** (tiempo real + caché offline, ideal para el súper
-sin cobertura) y **Firebase Authentication**. Ambos son gratuitos para este
-uso.
+sin cobertura) y **Firebase Authentication con Google**. Todo cabe en el plan
+gratuito **Spark**: no añadas tarjeta y nunca habrá cargos.
 
-1. Crea un proyecto en <https://console.firebase.google.com>.
-2. **Authentication → Método de inicio de sesión → Anónimo → Habilitar.**
-3. **Firestore Database → Crear base de datos** (modo producción, región
-   `eur3` o la más cercana).
-4. **Firestore → Reglas**: pega el contenido de [`firestore.rules`](firestore.rules)
-   y publica (o `npx firebase-tools deploy --only firestore:rules`).
-5. **Configuración del proyecto → Tus apps → Web (`</>`)**: registra una app
-   web y copia la configuración.
-6. Copia `.env.example` a `.env.local` y rellena los valores `VITE_FIREBASE_*`.
-7. Si publicas en un dominio propio o en GitHub Pages, añádelo en
-   **Authentication → Configuración → Dominios autorizados**.
+1. Crea un proyecto en <https://console.firebase.google.com> (puedes
+   desactivar Google Analytics).
+2. **Authentication → Comenzar → Método de inicio de sesión → Google →
+   Habilitar** (elige un correo de asistencia y guarda).
+3. **Authentication → Configuración → Dominios autorizados → Agregar
+   dominio**: `carero2.github.io`.
+4. **Firestore Database → Crear base de datos** (modo producción, región
+   `eur3 (europe-west)`).
+5. **Firestore → Reglas**: pega [`firestore.rules`](firestore.rules),
+   **cambia los dos correos de ejemplo por los vuestros** y pulsa Publicar.
+6. **Configuración del proyecto (⚙️) → Tus apps → Web (`</>`)**: registra
+   una app (sin Hosting) y copia los valores de `firebaseConfig`.
+7. Para probar en local: copia `.env.example` a `.env.local` y rellénalo.
+   Para la web publicada: crea las variables en GitHub (ver abajo).
 
-La primera vez que abráis la app, uno crea un **hogar** y comparte el código
-(`XXXX-XXXX`); el otro elige “Tengo un código”. A partir de ahí todo lo que
-añada uno aparece al instante en el otro móvil.
+Cada uno entra con **“Continuar con Google”**. Si alguien entra con una cuenta
+que no está en las reglas, ve una pantalla de “Sin acceso” y no puede leer ni
+escribir nada.
 
-> La configuración web de Firebase no es secreta: la seguridad la dan las
-> reglas de Firestore, que solo permiten leer y escribir a los miembros del
-> hogar.
+### ¿Es seguro?
 
-## Publicar en GitHub Pages
-
-El workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-compila y publica la app en cada push a `main`.
-
-1. **Settings → Pages → Source: GitHub Actions.**
-2. **Settings → Secrets and variables → Actions → Variables**: crea las
-   variables `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
-   `VITE_FIREBASE_MESSAGING_SENDER_ID` y `VITE_FIREBASE_APP_ID`.
-3. La app quedará en `https://<usuario>.github.io/cerlis-app/`. Ábrela en
-   Safari y añádela a la pantalla de inicio.
+- La configuración web de Firebase **no es secreta** (cualquiera la ve en el
+  navegador). La seguridad la dan las **reglas de Firestore**, que viven en tu
+  proyecto de Firebase, no en GitHub: cambiar el repositorio no las cambia.
+- Las reglas solo dejan pasar a las cuentas de Google de la lista, con el
+  correo verificado.
 
 ## Estructura
 
@@ -72,12 +66,13 @@ src/
   lib/
     store/          Capa de datos: interfaz común + Firebase + localStorage
     data.tsx        Proveedor React con lista, recetas y estado de sincronización
+    auth.tsx        Sesión con Google (solo si Firebase está configurado)
     categories.ts   Pasillos y detección de categoría/cantidad
     recipes.ts      Utilidades de recetas (parseo de ingredientes, etc.)
     router.ts       Router por hash (funciona en cualquier hosting estático)
-    prefs.ts        Preferencias locales (nombre, hogar, tema)
+    prefs.ts        Preferencias locales (nombre, tema)
   components/       UI reutilizable (hojas inferiores, avisos, filas deslizables…)
-  screens/          Inicio, Compra, Recetas, Detalle, Editor, Ajustes, Bienvenida
+  screens/          Inicio, Compra, Recetas, Detalle, Editor, Ajustes, Inicio de sesión
 public/             Manifest, iconos y service worker
 firestore.rules     Reglas de seguridad
 ```
@@ -85,17 +80,16 @@ firestore.rules     Reglas de seguridad
 ### Modelo de datos
 
 ```
-households/{código}            { name, members: [uid] }
-households/{código}/items/*    { name, quantity?, category, checked, addedBy?, recipeId?, createdAt, checkedAt? }
-households/{código}/recipes/*  { title, emoji, ingredients: string[], steps: string[],
-                                 servings?, time?, tags[], notes?, source?, favorite, … }
+items/*    { name, quantity?, category, checked, addedBy?, recipeId?, createdAt, checkedAt? }
+recipes/*  { title, emoji, ingredients: string[], steps: string[],
+             servings?, time?, tags[], notes?, source?, favorite, … }
 ```
 
 ## Próximo paso: recetas con IA
 
-La idea es iniciar sesión con Google y usar Gemini con la cuenta del usuario
-(sin guardar credenciales) para convertir un enlace, texto o foto en una
-receta con **exactamente** el formato `Recipe` de
-[`src/lib/types.ts`](src/lib/types.ts): `ingredients: string[]` y
-`steps: string[]`. El editor ya acepta pegar listas y las separa por líneas,
-así que la IA solo tendrá que rellenar ese mismo borrador.
+Con la misma sesión de Google y el mismo proyecto de Firebase se puede usar
+Gemini a través de **Firebase AI Logic** (Gemini Developer API, con capa
+gratuita en el plan Spark), sin claves guardadas en la app ni en el
+repositorio. La IA convertirá un enlace, texto o foto en una receta con
+**exactamente** el formato `Recipe` de [`src/lib/types.ts`](src/lib/types.ts):
+`ingredients: string[]` y `steps: string[]`.

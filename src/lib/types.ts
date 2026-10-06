@@ -50,9 +50,5 @@ export interface Recipe {
 export type NewItem = Omit<ShoppingItem, 'id' | 'createdAt' | 'checked'> & { checked?: boolean }
 export type RecipeDraft = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
 
-export type SyncState = 'local' | 'connecting' | 'online' | 'offline' | 'error'
-
-export interface Household {
-  id: string
-  name: string
-}
+/** `denied`: la cuenta de Google no está en la lista de cuentas permitidas. */
+export type SyncState = 'local' | 'connecting' | 'online' | 'offline' | 'error' | 'denied'

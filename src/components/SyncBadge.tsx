@@ -6,6 +6,7 @@ const LABELS: Record<SyncState, string> = {
   online: 'Sincronizado',
   offline: 'Sin conexión · se guardará luego',
   error: 'Error de sincronización',
+  denied: 'Sin acceso',
 }
 
 export function SyncBadge({ state }: { state: SyncState }) {

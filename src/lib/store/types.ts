@@ -1,4 +1,4 @@
-import type { Household, NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
+import type { NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
 
 export type Unsubscribe = () => void
 
@@ -23,11 +23,4 @@ export interface DataStore {
 
   subscribeSync(cb: (state: SyncState) => void): Unsubscribe
   dispose(): void
-}
-
-export interface HouseholdService {
-  create(name: string): Promise<Household>
-  join(code: string): Promise<Household>
-  get(code: string): Promise<Household | null>
-  rename(code: string, name: string): Promise<void>
 }

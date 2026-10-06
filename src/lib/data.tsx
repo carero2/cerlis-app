@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { cloudEnabled, firebaseConfig } from './store/config'
+import { firebaseConfig } from './store/config'
 import { createLocalStore } from './store/local'
 import type { DataStore } from './store/types'
 import type { Recipe, ShoppingItem, SyncState } from './types'
-import { usePrefs } from './prefs'
+import { useUser } from './auth'
 
 interface DataContextValue {
   store: DataStore
@@ -22,14 +22,13 @@ export function useData(): DataContextValue {
   return ctx
 }
 
-/** ¿Hay que mostrar la bienvenida para crear o unirse a un hogar? */
-export function useNeedsHousehold(): boolean {
-  const { householdId } = usePrefs()
-  return cloudEnabled && !householdId
-}
-
+/**
+ * Carga los datos con el backend que toque: Firebase si hay sesión iniciada
+ * (lo decide <Shell>) o almacenamiento local si no hay Firebase configurado.
+ */
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { householdId } = usePrefs()
+  const user = useUser()
+  const userId = user?.uid ?? null
   const [store, setStore] = useState<DataStore | null>(null)
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -45,11 +44,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setError(null)
 
     async function boot() {
-      if (cloudEnabled && householdId) {
+      if (userId) {
         // Carga diferida: en modo local no se descarga el SDK de Firebase.
         const fb = await import('./store/firebase')
-        await fb.ensureUser(firebaseConfig!)
-        return fb.createFirebaseStore(firebaseConfig!, householdId)
+        return fb.createFirebaseStore(firebaseConfig!)
       }
       return createLocalStore()
     }
@@ -69,7 +67,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelled = true
       created?.dispose()
     }
-  }, [householdId])
+  }, [userId])
 
   useEffect(() => {
     if (!store) return
