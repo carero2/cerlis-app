@@ -43,9 +43,10 @@ gratuito **Spark**: no añadas tarjeta y nunca habrá cargos.
 5. **Firestore → Reglas**: pega [`firestore.rules`](firestore.rules),
    **cambia los dos correos de ejemplo por los vuestros** y pulsa Publicar.
 6. **Configuración del proyecto (⚙️) → Tus apps → Web (`</>`)**: registra
-   una app (sin Hosting) y copia los valores de `firebaseConfig`.
-7. Para probar en local: copia `.env.example` a `.env.local` y rellénalo.
-   Para la web publicada: crea las variables en GitHub (ver abajo).
+   una app (sin Hosting) y copia los valores de `firebaseConfig` en
+   [`.env.production`](.env.production) (ya está rellenado para `cerlis-app`).
+7. Para probar en local con sincronización: copia `.env.production` a
+   `.env.local`.
 
 Cada uno entra con **“Continuar con Google”**. Si alguien entra con una cuenta
 que no está en las reglas, ve una pantalla de “Sin acceso” y no puede leer ni
@@ -58,6 +59,18 @@ escribir nada.
   proyecto de Firebase, no en GitHub: cambiar el repositorio no las cambia.
 - Las reglas solo dejan pasar a las cuentas de Google de la lista, con el
   correo verificado.
+
+## Publicar en GitHub Pages
+
+El workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+compila y publica la app en cada push a `main` (y de momento también a la rama
+de desarrollo). También se puede lanzar a mano desde **Actions → Publicar en
+GitHub Pages → Run workflow**.
+
+1. **Settings → Pages → Source: GitHub Actions** (no “Deploy from a branch”:
+   la app hay que compilarla antes de publicarla).
+2. La app queda en <https://carero2.github.io/cerlis-app/>. Ábrela en Safari
+   y elige **Compartir → Añadir a pantalla de inicio**.
 
 ## Estructura
 
