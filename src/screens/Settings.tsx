@@ -16,7 +16,7 @@ const isStandalone =
 
 export function Settings() {
   const prefs = usePrefs()
-  const { sync, recipes, items, home, store } = useData()
+  const { sync, recipes, items, home, events, store } = useData()
   const toast = useToast()
   const user = useUser()
   const { signOut } = useAuth()
@@ -25,7 +25,7 @@ export function Settings() {
 
   const exportData = () => {
     // Las fotos grandes no van en la copia (solo las miniaturas) para que el archivo sea ligero.
-    const blob = new Blob([JSON.stringify({ app: 'cerlis', version: 1, exportedAt: new Date().toISOString(), recipes, items }, null, 2)], {
+    const blob = new Blob([JSON.stringify({ app: 'cerlis', version: 1, exportedAt: new Date().toISOString(), recipes, items, events }, null, 2)], {
       type: 'application/json',
     })
     const url = URL.createObjectURL(blob)
@@ -155,7 +155,7 @@ export function Settings() {
 
       <Sheet open={sheet === 'backup'} onClose={() => setSheet(null)} title="Copia de seguridad" tone="blue">
         <p className="muted small sheet-intro">
-          Descarga vuestras recetas y la lista en un archivo, o recupera recetas de una copia anterior.
+          Descarga vuestras recetas, la lista y el calendario en un archivo, o recupera recetas de una copia anterior.
         </p>
         <div className="backup-actions">
           <button className="btn btn-primary btn-block" onClick={exportData}>

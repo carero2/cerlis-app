@@ -63,6 +63,32 @@ export interface Recipe {
 export type NewItem = Omit<ShoppingItem, 'id' | 'createdAt' | 'checked'> & { checked?: boolean }
 export type RecipeDraft = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
 
+export type Repeat = 'weekly' | 'monthly' | 'yearly'
+
+/**
+ * Plan del calendario compartido. Las fechas van como texto local
+ * ("2026-12-05") para que no cambien de día por las zonas horarias.
+ */
+export interface CalendarEvent {
+  id: string
+  title: string
+  /** Día de inicio, AAAA-MM-DD. */
+  date: string
+  /** Último día (incluido) si dura varios días, AAAA-MM-DD. */
+  endDate?: string
+  allDay: boolean
+  /** Hora de inicio y fin, HH:mm (solo si no es todo el día). */
+  start?: string
+  end?: string
+  repeat?: Repeat
+  notes?: string
+  createdBy?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type EventDraft = Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>
+
 /** Personalización compartida de la pantalla de inicio (todo opcional). */
 export interface HomeSettings {
   /** Foto de los dos que encabeza Inicio. */

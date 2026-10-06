@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { firebaseConfig } from './store/config'
 import { createLocalStore } from './store/local'
 import type { DataStore } from './store/types'
-import type { HomeSettings, Recipe, ShoppingItem, SyncState } from './types'
+import type { CalendarEvent, HomeSettings, Recipe, ShoppingItem, SyncState } from './types'
 import { useUser } from './auth'
 
 interface DataContextValue {
@@ -10,6 +10,7 @@ interface DataContextValue {
   items: ShoppingItem[]
   recipes: Recipe[]
   home: HomeSettings
+  events: CalendarEvent[]
   sync: SyncState
   /** true cuando ya llegó la primera tanda de datos. */
   ready: boolean
@@ -39,6 +40,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [home, setHome] = useState<HomeSettings>({})
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const [sync, setSync] = useState<SyncState>('connecting')
   const [loaded, setLoaded] = useState({ items: false, recipes: false })
   const [error, setError] = useState<string | null>(null)
@@ -88,6 +90,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setLoaded((l) => (l.recipes ? l : { ...l, recipes: true }))
       }),
       store.subscribeHome(setHome),
+      store.subscribeEvents(setEvents),
       store.subscribeSync(setSync),
     ]
     return () => offs.forEach((off) => off())
@@ -110,8 +113,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<DataContextValue | null>(
-    () => (store ? { store, items, recipes, home, sync, ready: loaded.items && loaded.recipes, releasePhotos } : null),
-    [store, items, recipes, home, sync, loaded, releasePhotos],
+    () => (store ? { store, items, recipes, home, events, sync, ready: loaded.items && loaded.recipes, releasePhotos } : null),
+    [store, items, recipes, home, events, sync, loaded, releasePhotos],
   )
 
   if (error) {

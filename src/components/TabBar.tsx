@@ -5,6 +5,7 @@ const TABS: { id: Tab; label: string; icon: IconName; path: string }[] = [
   { id: 'home', label: 'Inicio', icon: 'home', path: paths.home },
   { id: 'list', label: 'Compra', icon: 'cart', path: paths.list },
   { id: 'recipes', label: 'Recetas', icon: 'book', path: paths.recipes },
+  { id: 'calendar', label: 'Calendario', icon: 'calendar', path: paths.calendar },
   { id: 'settings', label: 'Ajustes', icon: 'gear', path: paths.settings },
 ]
 

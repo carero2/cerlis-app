@@ -4,6 +4,7 @@ import { Page } from '../components/Page'
 import { PhotoViewer } from '../components/Photo'
 import { QuickAdd } from '../components/QuickAdd'
 import { useUser } from '../lib/auth'
+import { fromKey, relativeDay, timeLabel, upcoming } from '../lib/calendar'
 import { CATEGORY_BY_ID } from '../lib/categories'
 import { countdownDateFmt, remaining, useNow } from '../lib/countdown'
 import { useData } from '../lib/data'
@@ -12,7 +13,7 @@ import { setPrefs, usePrefs } from '../lib/prefs'
 import { formatTime, recipeTint } from '../lib/recipes'
 import { navigate, paths, switchTab } from '../lib/router'
 import { sortItems, useShoppingActions } from '../lib/shopping'
-import type { HomeSettings, Recipe } from '../lib/types'
+import type { CalendarEvent, HomeSettings, Recipe } from '../lib/types'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -26,7 +27,7 @@ const dateFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeri
 const PREVIEW = 5
 
 export function Home() {
-  const { items, recipes, home } = useData()
+  const { items, recipes, home, events } = useData()
   const { name, hideHomeTip } = usePrefs()
   const user = useUser()
   const { toggle } = useShoppingActions()
@@ -94,6 +95,8 @@ export function Home() {
             </button>
           </div>
         )}
+
+        <AgendaBlock events={events} />
 
         {/* Lista de la compra */}
         <section className="home-block">
@@ -231,6 +234,41 @@ function Unit({ value, label }: { value: number; label: string }) {
     </span>
   )
 }
+
+/** Próximos planes del calendario (solo si hay alguno en las próximas semanas). */
+function AgendaBlock({ events }: { events: CalendarEvent[] }) {
+  const next = useMemo(() => upcoming(events, 3, 30), [events])
+  if (!next.length) return null
+  return (
+    <section className="home-block home-agenda">
+      <div className="home-section-head">
+        <h2>Próximos planes</h2>
+        <button className="link-btn" onClick={() => switchTab(paths.calendar)}>
+          Calendario
+        </button>
+      </div>
+      <div className="card agenda-card">
+        {next.map((o) => (
+          <button key={o.event.id + o.date} className="agenda-row" onClick={() => switchTab(paths.calendarDay(o.date))}>
+            <span className="agenda-date">
+              <span className="agenda-num">{fromKey(o.date).getDate()}</span>
+              <span className="agenda-dow">{weekdayFmt.format(fromKey(o.date))}</span>
+            </span>
+            <span className="agenda-text">
+              <strong>{o.event.title}</strong>
+              <span className="muted small">
+                {relativeDay(o.date)} · {o.event.allDay ? (o.endDate !== o.date ? 'varios días' : 'todo el día') : timeLabel(o.event)}
+              </span>
+            </span>
+            <Icon name="chevron" size={16} className="muted" />
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+const weekdayFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'short' })
 
 /** Recetas en pequeño: sugerencia del día y un carrusel compacto. */
 function RecipesBlock({ recipes, aiAvailable }: { recipes: Recipe[]; aiAvailable: boolean }) {

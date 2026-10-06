@@ -4,6 +4,7 @@ import { useAuth } from './lib/auth'
 import { DataProvider, useData } from './lib/data'
 import { usePrefs } from './lib/prefs'
 import { routeTab, useRoute } from './lib/router'
+import { Calendar } from './screens/Calendar'
 import { Home } from './screens/Home'
 import { RecipeDetail } from './screens/RecipeDetail'
 import { RecipeEditor } from './screens/RecipeEditor'
@@ -73,6 +74,9 @@ function Main() {
         break
       case 'recipe-edit':
         screen = <RecipeEditor key={route.id} id={route.id} />
+        break
+      case 'calendar':
+        screen = <Calendar initialDate={route.date} />
         break
       case 'settings':
         screen = <Settings />

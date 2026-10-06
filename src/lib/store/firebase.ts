@@ -26,7 +26,7 @@ import {
   type FirestoreError,
 } from 'firebase/firestore'
 import { uid } from '../ids'
-import type { HomeSettings, Recipe, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, HomeSettings, Recipe, ShoppingItem, SyncState } from '../types'
 import type { DataStore } from './types'
 import type { FirebaseConfig } from './config'
 
@@ -98,6 +98,7 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const itemsCol = collection(db, 'items')
   const recipesCol = collection(db, 'recipes')
   const photosCol = collection(db, 'photos')
+  const eventsCol = collection(db, 'events')
   // Un único documento con la personalización compartida de Inicio.
   const homeDoc = doc(db, 'settings', 'home')
 
@@ -121,6 +122,28 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const onError = (e: FirestoreError) => {
     console.error(e)
     setSync(e.code === 'permission-denied' ? 'denied' : 'error')
+  }
+
+  /**
+   * Escucha opcional: si falla (p. ej. reglas aún sin publicar para una
+   * colección nueva) la app sigue funcionando y se reintenta cada poco.
+   */
+  const listenOptional = (label: string, subscribe: (onFail: (e: FirestoreError) => void) => () => void) => {
+    let off: (() => void) | null = null
+    let retry: number | undefined
+    let closed = false
+    const listen = () => {
+      off = subscribe((e) => {
+        console.warn(label, e)
+        if (!closed) retry = window.setTimeout(listen, 15_000)
+      })
+    }
+    listen()
+    return () => {
+      closed = true
+      window.clearTimeout(retry)
+      off?.()
+    }
   }
 
   return {
@@ -179,28 +202,28 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
       await deleteDoc(doc(recipesCol, id))
     },
 
+    subscribeEvents(cb) {
+      return listenOptional('events', (onFail) =>
+        onSnapshot(eventsCol, (snap) => cb(snap.docs.map((d) => ({ ...(d.data() as Omit<CalendarEvent, 'id'>), id: d.id }))), onFail),
+      )
+    },
+    async createEvent(draft) {
+      const id = uid()
+      const now = Date.now()
+      await setDoc(doc(eventsCol, id), { ...draft, createdAt: now, updatedAt: now })
+      return id
+    },
+    async updateEvent(id, patch) {
+      await updateDoc(doc(eventsCol, id), toUpdate({ ...patch, updatedAt: Date.now() }))
+    },
+    async deleteEvent(id) {
+      await deleteDoc(doc(eventsCol, id))
+    },
+
     subscribeHome(cb) {
-      // Es opcional: si falla (p. ej. reglas sin publicar) la app sigue funcionando
-      // y se reintenta cada poco, para no tener que cerrar la app al arreglarlo.
-      let off: (() => void) | null = null
-      let retry: number | undefined
-      let closed = false
-      const listen = () => {
-        off = onSnapshot(
-          homeDoc,
-          (snap) => cb((snap.data() as HomeSettings | undefined) ?? {}),
-          (e) => {
-            console.warn('settings/home', e)
-            if (!closed) retry = window.setTimeout(listen, 15_000)
-          },
-        )
-      }
-      listen()
-      return () => {
-        closed = true
-        window.clearTimeout(retry)
-        off?.()
-      }
+      return listenOptional('settings/home', (onFail) =>
+        onSnapshot(homeDoc, (snap) => cb((snap.data() as HomeSettings | undefined) ?? {}), onFail),
+      )
     },
     async updateHome(patch) {
       await setDoc(homeDoc, toUpdate(patch), { merge: true })

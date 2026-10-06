@@ -11,6 +11,9 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
   tiene **ingredientes** y **preparación**; con un toque mandas los
   ingredientes que os faltan a la lista. Modo cocina para que no se apague la
   pantalla.
+- **Calendario**: planes compartidos con vista de mes, eventos de todo el día,
+  con hora o de varios días (viajes), repeticiones semanales, mensuales o
+  anuales (cumpleaños, aniversarios) y notas. Los próximos salen en Inicio.
 - **Ajustes**: tu nombre, foto de los dos, mensaje y cuenta atrás para
   Inicio (opcionales y compartidos), tema y copia de seguridad.
 
@@ -97,6 +100,8 @@ items/*    { name, quantity?, category, checked, addedBy?, recipeId?, photo?, cr
 recipes/*  { title, emoji, ingredients: string[], steps: string[], photo?,
              servings?, time?, tags[], notes?, source?, favorite, … }
 photos/*   { data: "data:image/jpeg;base64,…", createdAt }
+events/*   { title, date: "AAAA-MM-DD", endDate?, allDay, start?: "HH:mm", end?,
+             repeat?: weekly|monthly|yearly, notes?, createdBy? }
 settings/home { photo?, message?: { text, author?, updatedAt },
                 countdown?: { title, emoji, date } }
 
@@ -141,4 +146,4 @@ la imagen grande (≈1280 px, < 1 MB) en la colección `photos`, que solo se
 descarga al abrirla. Con 1 GB gratis de Firestore caben varios miles de fotos.
 
 > Cada vez que cambie [`firestore.rules`](firestore.rules) hay que volver a
-> publicarlas en la consola (ahora incluyen `photos` y `settings`).
+> publicarlas en la consola (ahora incluyen `photos`, `settings` y `events`).

@@ -1,4 +1,4 @@
-import type { HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, EventDraft, HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
 
 export type Unsubscribe = () => void
 
@@ -20,6 +20,11 @@ export interface DataStore {
   createRecipe(draft: RecipeDraft): Promise<string>
   updateRecipe(id: string, patch: Partial<RecipeDraft>): Promise<void>
   deleteRecipe(id: string): Promise<void>
+
+  subscribeEvents(cb: (events: CalendarEvent[]) => void): Unsubscribe
+  createEvent(draft: EventDraft): Promise<string>
+  updateEvent(id: string, patch: Partial<EventDraft>): Promise<void>
+  deleteEvent(id: string): Promise<void>
 
   subscribeHome(cb: (home: HomeSettings) => void): Unsubscribe
   /** Un campo a `undefined` lo elimina. */

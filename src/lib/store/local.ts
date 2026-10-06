@@ -1,11 +1,12 @@
 import { uid } from '../ids'
-import type { HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem } from '../types'
+import type { CalendarEvent, HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem } from '../types'
 import type { DataStore } from './types'
 
 const ITEMS_KEY = 'cerlis:items'
 const RECIPES_KEY = 'cerlis:recipes'
 const PHOTO_PREFIX = 'cerlis:photo:'
 const HOME_KEY = 'cerlis:home'
+const EVENTS_KEY = 'cerlis:events'
 
 function readHome(): HomeSettings {
   try {
@@ -32,6 +33,13 @@ export function createLocalStore(): DataStore {
   const itemListeners = new Set<(items: ShoppingItem[]) => void>()
   const recipeListeners = new Set<(recipes: Recipe[]) => void>()
   const homeListeners = new Set<(home: HomeSettings) => void>()
+  const eventListeners = new Set<(events: CalendarEvent[]) => void>()
+  let events = read<CalendarEvent>(EVENTS_KEY)
+  const saveEvents = (next: CalendarEvent[]) => {
+    events = next
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(events))
+    eventListeners.forEach((cb) => cb(events))
+  }
   let home = readHome()
 
   let items = read<ShoppingItem>(ITEMS_KEY)
@@ -58,6 +66,9 @@ export function createLocalStore(): DataStore {
     } else if (e.key === RECIPES_KEY) {
       recipes = read(RECIPES_KEY)
       emitRecipes()
+    } else if (e.key === EVENTS_KEY) {
+      events = read(EVENTS_KEY)
+      eventListeners.forEach((cb) => cb(events))
     } else if (e.key === HOME_KEY) {
       home = readHome()
       homeListeners.forEach((cb) => cb(home))
@@ -113,6 +124,24 @@ export function createLocalStore(): DataStore {
       saveRecipes(recipes.filter((r) => r.id !== id))
     },
 
+    subscribeEvents(cb) {
+      eventListeners.add(cb)
+      cb(events)
+      return () => eventListeners.delete(cb)
+    },
+    async createEvent(draft) {
+      const now = Date.now()
+      const event: CalendarEvent = { ...draft, id: uid(), createdAt: now, updatedAt: now }
+      saveEvents([...events, event])
+      return event.id
+    },
+    async updateEvent(id, patch) {
+      saveEvents(events.map((e) => (e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e)))
+    },
+    async deleteEvent(id) {
+      saveEvents(events.filter((e) => e.id !== id))
+    },
+
     subscribeHome(cb) {
       homeListeners.add(cb)
       cb(home)
@@ -151,6 +180,7 @@ export function createLocalStore(): DataStore {
       itemListeners.clear()
       recipeListeners.clear()
       homeListeners.clear()
+      eventListeners.clear()
     },
   }
 }

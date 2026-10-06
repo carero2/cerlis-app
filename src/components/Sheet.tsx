@@ -8,7 +8,7 @@ interface SheetProps {
   children: ReactNode
   footer?: ReactNode
   /** Color de acento (las hojas se montan fuera de la pantalla y no lo heredan). */
-  tone?: 'green' | 'orange' | 'blue'
+  tone?: 'green' | 'orange' | 'blue' | 'purple'
 }
 
 /** Hoja inferior estilo iOS con animación de entrada y salida. */
