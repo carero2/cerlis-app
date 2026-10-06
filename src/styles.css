@@ -2732,7 +2732,7 @@ a {
 
 .home-hero.has-photo {
   /* Foto alargada: ocupa buena parte de la pantalla del iPhone. */
-  min-height: calc(var(--safe-top) + clamp(480px, 74vh, 660px));
+  min-height: calc(var(--safe-top) + clamp(540px, 84vh, 780px));
   color: #fff;
   background: #1d201e;
 }
