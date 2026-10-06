@@ -18,6 +18,12 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
   anuales (cumpleaños, aniversarios) y notas. Cada plan es de uno de los
   dos o de ambos, con su color (cada uno elige el suyo en Ajustes). Los
   próximos salen en Inicio.
+- **Juegos**: partida de **Go** por turnos entre los dos (9×9, 13×13 o
+  19×19): cada uno mueve desde su móvil cuando le toca y la pestaña e Inicio
+  avisan de que es tu turno. También se puede jugar en un solo móvil. La app
+  impide jugadas ilegales (suicidio, ko), cuenta capturas y hace el recuento
+  final; lleva el marcador de victorias. El botón **?** explica las reglas
+  con diagramas para quien no ha jugado nunca.
 - **Ajustes**: tu nombre, foto de los dos, mensaje y cuenta atrás para
   Inicio (opcionales y compartidos), tema y copia de seguridad.
 
@@ -91,6 +97,8 @@ src/
     recipes.ts      Utilidades de recetas (parseo de ingredientes, etc.)
     router.ts       Router por hash (funciona en cualquier hosting estático)
     prefs.ts        Preferencias locales (nombre, tema)
+    go.ts           Motor del Go (capturas, suicidio, ko, recuento por área)
+    goGame.ts       Partida compartida: turnos, pases, rendirse, marcador
   components/       UI reutilizable (hojas inferiores, avisos, filas deslizables…)
   screens/          Inicio, Compra, Recetas, Detalle, Editor, Ajustes, Inicio de sesión
 public/             Manifest, iconos y service worker
@@ -110,6 +118,9 @@ settings/shopping { lists?: [{ id, name, emoji? }], categories?: [{ id, label, e
                     learned?: { [producto]: idPasillo } }
 settings/home { members?: { [uid]: { name, email?, color } }, photo?, message?: { text, author?, updatedAt },
                 countdown?: { title, emoji, date } }
+settings/go   { game?: { id, size, black: uid, white: uid, hotseat?, moves: number[] (-1 = pasar),
+                         status: playing|scoring|finished, dead?: number[], komi, result? },
+                wins?: { [uid]: número } }
 
 photo = { id, thumb }   // id de photos/* + miniatura JPEG de ~360 px
 ```

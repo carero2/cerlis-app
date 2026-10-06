@@ -6,6 +6,7 @@ import { useUser } from '../lib/auth'
 import { fromKey, relativeDay, timeLabel, upcoming } from '../lib/calendar'
 import { countdownDateFmt, remaining, useNow } from '../lib/countdown'
 import { useData } from '../lib/data'
+import { useMyGoTurn } from '../lib/goGame'
 import { usePeople } from '../lib/people'
 import { useShopConfig } from '../lib/shopConfig'
 import { usePhoto } from '../lib/photos'
@@ -35,6 +36,9 @@ export function Home() {
   const listName = (id: string) => lists.find((l) => l.id === id)
   const now = useNow()
   const heroPhoto = usePhoto(home.photo)
+  const goTurn = useMyGoTurn()
+  const { me, people } = usePeople()
+  const partnerName = people.find((p) => p.id !== me)?.name
 
   const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
   const done = items.length - pending.length
@@ -93,6 +97,20 @@ export function Home() {
               <Icon name="x" size={16} />
             </button>
           </div>
+        )}
+
+        {goTurn && (
+          <button className="home-go" onClick={() => switchTab(paths.games)}>
+            <span className="home-go-stones" aria-hidden>
+              <i className="stone-dot big black" />
+              <i className="stone-dot big white" />
+            </span>
+            <span className="home-go-text">
+              <strong>Te toca mover</strong>
+              <span className="muted small block">{partnerName ?? 'Tu pareja'} ya ha jugado en el Go</span>
+            </span>
+            <Icon name="chevron" size={18} />
+          </button>
         )}
 
         <AgendaBlock events={events} />

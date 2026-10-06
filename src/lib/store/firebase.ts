@@ -26,7 +26,7 @@ import {
   type FirestoreError,
 } from 'firebase/firestore'
 import { uid } from '../ids'
-import type { CalendarEvent, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, GoState, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from '../types'
 import type { DataStore } from './types'
 import type { FirebaseConfig } from './config'
 
@@ -103,6 +103,8 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const homeDoc = doc(db, 'settings', 'home')
   // Listas (tiendas), pasillos y pasillos aprendidos, compartidos.
   const shoppingDoc = doc(db, 'settings', 'shopping')
+  // Partida de Go en curso y marcador.
+  const goDoc = doc(db, 'settings', 'go')
 
   const syncListeners = new Set<(s: SyncState) => void>()
   let sync: SyncState = navigator.onLine ? 'connecting' : 'offline'
@@ -229,6 +231,16 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
     },
     async updateShopping(patch) {
       await setDoc(shoppingDoc, toUpdate(patch), { merge: true })
+    },
+
+    subscribeGo(cb) {
+      return listenOptional('settings/go', (onFail) =>
+        onSnapshot(goDoc, (snap) => cb((snap.data() as GoState | undefined) ?? {}), onFail),
+      )
+    },
+    async saveGo(state) {
+      // Sin merge: así no quedan restos de la partida anterior.
+      await setDoc(goDoc, JSON.parse(JSON.stringify(state)) as GoState)
     },
 
     subscribeHome(cb) {

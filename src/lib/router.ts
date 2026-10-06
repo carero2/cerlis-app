@@ -13,9 +13,10 @@ export type Route =
   | { name: 'recipe-new'; ai?: boolean }
   | { name: 'recipe-edit'; id: string }
   | { name: 'calendar'; date?: string }
+  | { name: 'games' }
   | { name: 'settings' }
 
-export type Tab = 'home' | 'list' | 'recipes' | 'calendar' | 'settings'
+export type Tab = 'home' | 'list' | 'recipes' | 'calendar' | 'games' | 'settings'
 
 function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent)
@@ -29,6 +30,8 @@ function parse(hash: string): Route {
       return { name: 'recipes' }
     case 'calendario':
       return { name: 'calendar', date: /^\d{4}-\d{2}-\d{2}$/.test(parts[1] ?? '') ? parts[1] : undefined }
+    case 'juegos':
+      return { name: 'games' }
     case 'ajustes':
       return { name: 'settings' }
     default:
@@ -47,6 +50,8 @@ export function routeTab(route: Route): Tab {
       return 'recipes'
     case 'calendar':
       return 'calendar'
+    case 'games':
+      return 'games'
     case 'settings':
       return 'settings'
     default:
@@ -64,6 +69,7 @@ export const paths = {
   recipeEdit: (id: string) => `/recetas/${encodeURIComponent(id)}/editar`,
   calendar: '/calendario',
   calendarDay: (date: string) => `/calendario/${date}`,
+  games: '/juegos',
   settings: '/ajustes',
 }
 

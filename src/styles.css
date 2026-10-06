@@ -27,6 +27,7 @@
   --red-soft: #fde8e8;
   --blue: #3a7bd5;
   --purple: #8a63d2;
+  --wood: #a8702f;
   --yellow: #f2b632;
 
   --accent: var(--green);
@@ -70,6 +71,7 @@
     --red-soft: #3b1f21;
     --blue: #5b95ea;
     --purple: #a688e6;
+    --wood: #d49a58;
     --tint-peach: #3d2a1f;
     --tint-mint: #1d3327;
     --tint-sky: #1d2a3d;
@@ -100,6 +102,7 @@
   --red-soft: #3b1f21;
   --blue: #5b95ea;
   --purple: #a688e6;
+  --wood: #d49a58;
   --tint-peach: #3d2a1f;
   --tint-mint: #1d3327;
   --tint-sky: #1d2a3d;
@@ -4040,4 +4043,403 @@ a {
   height: 28px;
   border-radius: 50%;
   color: var(--text-3);
+}
+
+.sheet-root.tone-wood .sheet {
+  --accent: var(--wood);
+  --accent-soft: color-mix(in srgb, var(--wood) 15%, transparent);
+}
+
+/* ---------- Juegos: Go ---------- */
+
+.theme-games {
+  --accent: var(--wood);
+  --accent-soft: color-mix(in srgb, var(--wood) 15%, transparent);
+}
+
+.tab-games.is-active { color: var(--wood); }
+
+.tab-dot {
+  position: absolute;
+  top: 1px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* Con seis pestañas, los textos algo más juntos */
+.tabbar .tab {
+  min-width: 0;
+  font-size: 10px;
+  letter-spacing: -0.1px;
+}
+
+.tabbar .tab-icon {
+  width: 40px;
+}
+
+.help-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.go-scoreboard b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.go-intro {
+  padding: 22px 20px 14px;
+  text-align: center;
+}
+
+.go-intro-art {
+  font-size: 40px;
+  letter-spacing: -6px;
+  margin-bottom: 6px;
+}
+
+.go-intro h2 {
+  font-size: 21px;
+  margin: 0 0 6px;
+}
+
+.go-intro p {
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.go-intro .btn + .btn {
+  margin-top: 6px;
+}
+
+.go-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
+  transition: background-color 0.2s;
+}
+
+.go-status strong {
+  font-size: 17px;
+}
+
+.go-status.is-my-turn {
+  background: color-mix(in srgb, var(--wood) 16%, var(--bg-elev));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--wood) 45%, transparent),
+    var(--shadow);
+}
+
+.go-status.is-finished {
+  background: color-mix(in srgb, var(--yellow) 20%, var(--bg-elev));
+}
+
+.go-status-icon {
+  font-size: 26px;
+  width: 30px;
+  text-align: center;
+}
+
+.stone-dot {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.stone-dot.black {
+  background: radial-gradient(circle at 35% 30%, #5a5f66, #0d0f12 70%);
+}
+
+.stone-dot.white {
+  background: radial-gradient(circle at 35% 30%, #fff, #d5d2c8 75%);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.35);
+}
+
+.stone-dot.big {
+  width: 28px;
+  height: 28px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.stone-dot.big.white {
+  box-shadow:
+    inset 0 0 0 0.5px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.go-board-wrap {
+  margin: 0 -4px;
+}
+
+.go-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  filter: drop-shadow(0 6px 16px rgba(60, 35, 10, 0.22));
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.go-board.is-interactive {
+  cursor: pointer;
+}
+
+.go-wood {
+  fill: #dcb36f;
+}
+
+.go-lines line {
+  stroke: #5b3f1c;
+  stroke-width: 0.32;
+  stroke-linecap: square;
+}
+
+.go-star {
+  fill: #5b3f1c;
+}
+
+.go-shadow {
+  fill: rgba(40, 20, 0, 0.28);
+}
+
+.go-white {
+  stroke: rgba(0, 0, 0, 0.25);
+  stroke-width: 0.25;
+}
+
+.go-ghost {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.go-dead {
+  opacity: 0.35;
+}
+
+.go-last-on-black,
+.go-last-on-white {
+  fill: none;
+  stroke-width: 0.7;
+}
+
+.go-last-on-black { stroke: #fff; }
+.go-last-on-white { stroke: #1a1a1a; }
+
+.go-terr-black { fill: #15171a; }
+.go-terr-white {
+  fill: #fff;
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 0.2;
+}
+
+.go-label {
+  font-size: 6px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: inherit;
+}
+
+.go-label.on-empty {
+  fill: #b3261e;
+}
+
+.go-label.on-black { fill: #fff; }
+.go-label.on-white { fill: #1a1a1a; }
+
+.go-captures {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 2px 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.go-captures span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.go-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.go-scoring {
+  margin-top: 16px;
+  padding: 14px 16px;
+}
+
+.go-scoring p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.go-score-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 19px !important;
+  font-weight: 700;
+}
+
+.go-score-line .stone-dot {
+  width: 16px;
+  height: 16px;
+}
+
+.go-scoring .go-actions {
+  margin-top: 10px;
+}
+
+.go-new-link {
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.go-opt-hint {
+  margin: 8px 2px 16px;
+}
+
+.go-opt-gap {
+  margin-top: 18px;
+}
+
+/* Reglas */
+
+.go-help {
+  padding-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.go-help p {
+  margin: 0 0 10px;
+}
+
+.go-help-intro {
+  color: var(--text-2);
+}
+
+.go-rule {
+  padding: 14px 0 6px;
+  border-top: 0.5px solid var(--sep);
+}
+
+.go-rule h4 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.go-rule-n {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.go-rule ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.go-rule li {
+  margin-bottom: 6px;
+}
+
+.go-diagram {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 12px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--bg-sunken);
+}
+
+.go-diagram .go-board {
+  width: 120px;
+  flex: none;
+  filter: drop-shadow(0 3px 8px rgba(60, 35, 10, 0.2));
+}
+
+.go-diagram figcaption {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.35;
+}
+
+/* Aviso de turno en Inicio */
+.home-go {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  text-align: left;
+  color: var(--text-3);
+  background: color-mix(in srgb, var(--wood) 14%, var(--bg-elev));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--wood) 30%, transparent),
+    var(--shadow);
+  transition: transform 0.15s;
+}
+
+.home-go:active {
+  transform: scale(0.98);
+}
+
+.home-go-stones {
+  display: flex;
+  flex: none;
+}
+
+.home-go-stones .stone-dot + .stone-dot {
+  margin-left: -9px;
+}
+
+.home-go-text {
+  flex: 1;
+  color: var(--text);
+}
+
+.go-label-bg {
+  fill: #dcb36f;
 }

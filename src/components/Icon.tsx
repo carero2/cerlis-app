@@ -148,6 +148,13 @@ const PATHS = {
       <path d="M10 8l-4 4 4 4M6 12h9" />
     </>
   ),
+  go: (
+    <>
+      <path d="M4 4v16M10 4v16M16 4v16M4 4h16M4 10h16M4 16h16" strokeWidth="1.2" opacity="0.55" />
+      <circle cx="10" cy="10" r="3.2" fill="currentColor" />
+      <circle cx="16" cy="16" r="3.2" />
+    </>
+  ),
   sliders: (
     <>
       <path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1" />

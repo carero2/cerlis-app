@@ -1,5 +1,5 @@
 import { uid } from '../ids'
-import type { CalendarEvent, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem } from '../types'
+import type { CalendarEvent, GoState, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem } from '../types'
 import type { DataStore } from './types'
 
 const ITEMS_KEY = 'cerlis:items'
@@ -8,6 +8,7 @@ const PHOTO_PREFIX = 'cerlis:photo:'
 const HOME_KEY = 'cerlis:home'
 const EVENTS_KEY = 'cerlis:events'
 const SHOPPING_KEY = 'cerlis:shopping'
+const GO_KEY = 'cerlis:go'
 
 function readHome(): HomeSettings {
   try {
@@ -44,6 +45,15 @@ export function createLocalStore(): DataStore {
     }
   }
   let shopping = readShopping()
+  const goListeners = new Set<(state: GoState) => void>()
+  const readGo = (): GoState => {
+    try {
+      return JSON.parse(localStorage.getItem(GO_KEY) ?? '{}') as GoState
+    } catch {
+      return {}
+    }
+  }
+  let go = readGo()
   let events = read<CalendarEvent>(EVENTS_KEY)
   const saveEvents = (next: CalendarEvent[]) => {
     events = next
@@ -82,6 +92,9 @@ export function createLocalStore(): DataStore {
     } else if (e.key === SHOPPING_KEY) {
       shopping = readShopping()
       shoppingListeners.forEach((cb) => cb(shopping))
+    } else if (e.key === GO_KEY) {
+      go = readGo()
+      goListeners.forEach((cb) => cb(go))
     } else if (e.key === HOME_KEY) {
       home = readHome()
       homeListeners.forEach((cb) => cb(home))
@@ -167,6 +180,17 @@ export function createLocalStore(): DataStore {
       shoppingListeners.forEach((cb) => cb(shopping))
     },
 
+    subscribeGo(cb) {
+      goListeners.add(cb)
+      cb(go)
+      return () => goListeners.delete(cb)
+    },
+    async saveGo(state) {
+      go = JSON.parse(JSON.stringify(state)) as GoState
+      localStorage.setItem(GO_KEY, JSON.stringify(go))
+      goListeners.forEach((cb) => cb(go))
+    },
+
     subscribeHome(cb) {
       homeListeners.add(cb)
       cb(home)
@@ -208,6 +232,7 @@ export function createLocalStore(): DataStore {
       homeListeners.clear()
       eventListeners.clear()
       shoppingListeners.clear()
+      goListeners.clear()
     },
   }
 }

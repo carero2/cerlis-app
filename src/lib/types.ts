@@ -88,6 +88,32 @@ export interface ShoppingConfig {
   learned?: Record<string, string>
 }
 
+/** Partida de Go compartida (settings/go). */
+export interface GoGame {
+  id: string
+  size: 9 | 13 | 19
+  /** uid de quien lleva cada color. */
+  black: string
+  white: string
+  /** Los dos juegan en el mismo móvil. */
+  hotseat?: boolean
+  /** Jugadas en orden: índice de la intersección o -1 para pasar. */
+  moves: number[]
+  status: 'playing' | 'scoring' | 'finished'
+  /** Piedras marcadas como muertas durante el recuento. */
+  dead?: number[]
+  komi: number
+  result?: { winner: 1 | 2; by: 'score' | 'resign'; black?: number; white?: number }
+  createdAt: number
+  updatedAt: number
+}
+
+export interface GoState {
+  game?: GoGame
+  /** Partidas ganadas por cada uid. */
+  wins?: Record<string, number>
+}
+
 export type Repeat = 'weekly' | 'monthly' | 'yearly'
 
 /**

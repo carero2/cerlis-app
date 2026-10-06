@@ -6,10 +6,11 @@ const TABS: { id: Tab; label: string; icon: IconName; path: string }[] = [
   { id: 'list', label: 'Compra', icon: 'cart', path: paths.list },
   { id: 'recipes', label: 'Recetas', icon: 'book', path: paths.recipes },
   { id: 'calendar', label: 'Calendario', icon: 'calendar', path: paths.calendar },
+  { id: 'games', label: 'Juegos', icon: 'go', path: paths.games },
   { id: 'settings', label: 'Ajustes', icon: 'gear', path: paths.settings },
 ]
 
-export function TabBar({ active, badge }: { active: Tab; badge?: number }) {
+export function TabBar({ active, badge, gameTurn }: { active: Tab; badge?: number; gameTurn?: boolean }) {
   return (
     <nav className="tabbar" aria-label="Secciones">
       {TABS.map((t) => (
@@ -22,6 +23,7 @@ export function TabBar({ active, badge }: { active: Tab; badge?: number }) {
           <span className="tab-icon">
             <Icon name={t.icon} size={25} />
             {t.id === 'list' && !!badge && <span className="tab-badge">{badge > 99 ? '99+' : badge}</span>}
+            {t.id === 'games' && gameTurn && <span className="tab-dot" aria-label="Te toca" />}
           </span>
           <span className="tab-label">{t.label}</span>
         </button>

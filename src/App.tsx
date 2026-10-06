@@ -3,9 +3,11 @@ import { TabBar } from './components/TabBar'
 import { useAuth } from './lib/auth'
 import { DataProvider, useData } from './lib/data'
 import { useRegisterMember } from './lib/people'
+import { useMyGoTurn } from './lib/goGame'
 import { usePrefs } from './lib/prefs'
 import { routeTab, useRoute } from './lib/router'
 import { Calendar } from './screens/Calendar'
+import { Games } from './screens/Games'
 import { Home } from './screens/Home'
 import { RecipeDetail } from './screens/RecipeDetail'
 import { RecipeEditor } from './screens/RecipeEditor'
@@ -53,6 +55,7 @@ function Main() {
   const route = useRoute()
   const { items, ready, sync } = useData()
   useRegisterMember()
+  const myGoTurn = useMyGoTurn()
   const pending = items.filter((i) => !i.checked).length
   const hideTabs = route.name === 'recipe-new' || route.name === 'recipe-edit'
 
@@ -80,6 +83,9 @@ function Main() {
       case 'calendar':
         screen = <Calendar initialDate={route.date} />
         break
+      case 'games':
+        screen = <Games />
+        break
       case 'settings':
         screen = <Settings />
         break
@@ -92,7 +98,7 @@ function Main() {
       <div className="screen" key={route.name + ('id' in route ? route.id : '')}>
         {screen}
       </div>
-      {!hideTabs && <TabBar active={routeTab(route)} badge={pending} />}
+      {!hideTabs && <TabBar active={routeTab(route)} badge={pending} gameTurn={myGoTurn} />}
     </div>
   )
 }
