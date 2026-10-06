@@ -3,7 +3,7 @@
 // - Recursos propios (JS, CSS, iconos): caché primero y se actualiza en segundo plano.
 // Las peticiones a Firebase no pasan por aquí: Firestore tiene su propia caché offline.
 
-const CACHE = 'cerlis-v1'
+const CACHE = 'cerlis-v2'
 const SCOPE = self.registration.scope
 
 self.addEventListener('install', (event) => {
@@ -22,6 +22,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET' || !request.url.startsWith(SCOPE)) return
+  // La comprobación de versiones siempre va a la red.
+  if (new URL(request.url).pathname.endsWith('/version.json')) return
 
   if (request.mode === 'navigate') {
     event.respondWith(

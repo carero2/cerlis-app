@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Shell, useThemeEffect } from './App'
 import { ToastProvider } from './components/Toast'
+import { UpdateBanner } from './components/UpdateBanner'
 import { AuthProvider } from './lib/auth'
 import './styles.css'
 
@@ -11,6 +12,7 @@ function Root() {
     <AuthProvider>
       <ToastProvider>
         <Shell />
+        <UpdateBanner />
       </ToastProvider>
     </AuthProvider>
   )

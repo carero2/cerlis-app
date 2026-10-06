@@ -128,7 +128,10 @@ export const REPEAT_LABELS = { weekly: 'Cada semana', monthly: 'Cada mes', yearl
 
 export function timeLabel(e: CalendarEvent): string {
   if (e.allDay) return 'Todo el día'
-  return e.end ? `${e.start} – ${e.end}` : (e.start ?? '')
+  if (!e.end) return e.start ?? ''
+  // Si termina otro día, se indica cuál.
+  if (e.endDate && e.endDate > e.date) return `${e.start} – ${dayShortFmt.format(fromKey(e.endDate))} ${e.end}`
+  return `${e.start} – ${e.end}`
 }
 
 /** "Hoy", "Mañana", o la fecha corta. */

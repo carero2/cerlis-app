@@ -18,6 +18,13 @@ interface Props {
 
 type RepeatOption = Repeat | 'none'
 
+const toMinutes = (t: string) => {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+const fromMinutes = (n: number) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`
+const plusHour = (t: string) => fromMinutes(Math.min(toMinutes(t) + 60, 23 * 60 + 59))
+
 function saveError(e: unknown): string {
   if ((e as { code?: string }).code === 'permission-denied')
     return 'Firebase no deja guardar: publica las reglas nuevas en Firestore → Reglas (incluyen "events").'
@@ -47,23 +54,43 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
     setAllDay(event?.allDay ?? true)
     setDate(event?.date ?? defaultDate)
     setEndDate(event?.endDate ?? event?.date ?? defaultDate)
-    setStart(event?.start ?? '20:00')
-    setEnd(event?.end ?? '')
+    const s0 = event?.start ?? '20:00'
+    setStart(s0)
+    // Como en el calendario del iPhone: por defecto dura una hora.
+    setEnd(event?.end ?? plusHour(s0))
     setRepeat(event?.repeat ?? 'none')
     setWho(event?.who ?? BOTH)
     setNotes(event?.notes ?? '')
     setError(null)
   }, [open, event, defaultDate])
 
-  const valid = !!title.trim() && !!date && (allDay || !!start)
+  // El final no puede ser anterior al inicio.
+  const endsBefore = allDay ? endDate < date : `${endDate}T${end || start}` < `${date}T${start}`
+  const valid = !!title.trim() && !!date && (allDay || !!start) && !endsBefore
+
+  /** Al mover el inicio, el final se mueve con él manteniendo la duración. */
+  const changeStartDate = (v: string) => {
+    if (!v) return
+    setEndDate(addDays(v, Math.max(0, daysBetween(date, endDate))))
+    setDate(v)
+  }
+  const changeStartTime = (v: string) => {
+    if (!v) return
+    if (start && end) {
+      const shifted = toMinutes(end) + (toMinutes(v) - toMinutes(start))
+      const days = Math.floor(shifted / 1440)
+      setEnd(fromMinutes(((shifted % 1440) + 1440) % 1440))
+      if (days > 0) setEndDate(addDays(endDate, days))
+    }
+    setStart(v)
+  }
 
   const save = async () => {
     if (!valid) return
-    const multiDay = allDay && endDate > date
     const draft: EventDraft = {
       title: title.trim(),
       date,
-      endDate: multiDay ? endDate : undefined,
+      endDate: endDate > date ? endDate : undefined,
       allDay,
       start: allDay ? undefined : start,
       end: allDay || !end ? undefined : end,
@@ -140,53 +167,31 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
             <span>Todo el día</span>
             <input type="checkbox" className="ios-switch" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
           </label>
-          {allDay ? (
-            <>
-              <label className="field field-inline">
-                <span>Desde</span>
-                <input
-                  type="date"
-                  className="date-input"
-                  value={date}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (!v) return
-                    // "Hasta" se mueve con "Desde" manteniendo la duración.
-                    setEndDate(addDays(v, Math.max(0, daysBetween(date, endDate))))
-                    setDate(v)
-                  }}
-                />
-              </label>
-              <label className="field field-inline">
-                <span>Hasta</span>
-                <input type="date" className="date-input" value={endDate} min={date} onChange={(e) => setEndDate(e.target.value || date)} />
-              </label>
-            </>
-          ) : (
-            <>
-              <label className="field field-inline">
-                <span>Día</span>
-                <input
-                  type="date"
-                  className="date-input"
-                  value={date}
-                  onChange={(e) => {
-                    if (!e.target.value) return
-                    setDate(e.target.value)
-                    setEndDate(e.target.value)
-                  }}
-                />
-              </label>
-              <div className="field field-inline">
-                <span>Hora</span>
-                <div className="time-range">
-                  <input type="time" className="date-input" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Hora de inicio" />
-                  <span className="muted">–</span>
-                  <input type="time" className="date-input" value={end} onChange={(e) => setEnd(e.target.value)} aria-label="Hora de fin (opcional)" />
-                </div>
-              </div>
-            </>
-          )}
+          <div className="field field-inline">
+            <span>Empieza</span>
+            <div className="dt-pair">
+              <input type="date" className="date-input" value={date} onChange={(e) => changeStartDate(e.target.value)} aria-label="Fecha de inicio" />
+              {!allDay && (
+                <input type="time" className="date-input" value={start} onChange={(e) => changeStartTime(e.target.value)} aria-label="Hora de inicio" />
+              )}
+            </div>
+          </div>
+          <div className="field field-inline">
+            <span>Termina</span>
+            <div className="dt-pair">
+              <input
+                type="date"
+                className="date-input"
+                value={endDate}
+                min={date}
+                onChange={(e) => setEndDate(e.target.value || date)}
+                aria-label="Fecha de fin"
+              />
+              {!allDay && (
+                <input type="time" className="date-input" value={end} onChange={(e) => setEnd(e.target.value)} aria-label="Hora de fin" />
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="section-label">¿De quién?</div>
@@ -218,8 +223,10 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
             { value: 'yearly', label: 'Año' },
           ]}
         />
-        {allDay && endDate > date && (
-          <p className="muted small sheet-intro event-span">Dura {daysBetween(date, endDate) + 1} días</p>
+        {endsBefore ? (
+          <p className="form-error event-span">Termina antes de empezar: revisa la fecha u hora de fin.</p>
+        ) : (
+          endDate > date && <p className="muted small sheet-intro event-span">Dura {daysBetween(date, endDate) + 1} días</p>
         )}
 
         <div className="field-group event-notes">
