@@ -161,7 +161,9 @@ function CountdownCard({ countdown, now }: { countdown: NonNullable<HomeSettings
   return (
     <section className="countdown-card">
       <div className="countdown-head">
-        <span className="countdown-emoji">{countdown.emoji}</span>
+        <span className="countdown-emoji">
+          <Icon name="clock" size={22} />
+        </span>
         <span>
           <strong>{countdown.title}</strong>
           <span className="countdown-date capitalize">{countdownDateFmt.format(countdown.date)}</span>

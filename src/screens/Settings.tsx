@@ -15,7 +15,7 @@ const isStandalone =
 
 export function Settings() {
   const prefs = usePrefs()
-  const { sync, recipes, items, store } = useData()
+  const { sync, recipes, items, home, store } = useData()
   const toast = useToast()
   const user = useUser()
   const { signOut } = useAuth()
@@ -34,6 +34,22 @@ export function Settings() {
     a.click()
     URL.revokeObjectURL(url)
     setSheet(null)
+  }
+
+  const [cleaning, setCleaning] = useState(false)
+  const cleanPhotos = async () => {
+    setCleaning(true)
+    try {
+      const used = new Set([...items, ...recipes].map((x) => x.photo?.id).concat(home.photo?.id))
+      const unused = (await store.listPhotoIds()).filter((id) => !used.has(id))
+      await Promise.all(unused.map((id) => store.deletePhoto(id)))
+      toast(unused.length ? `${unused.length} foto${unused.length === 1 ? '' : 's'} sin usar borrada${unused.length === 1 ? '' : 's'}` : 'No había fotos sin usar')
+    } catch (e) {
+      console.error(e)
+      toast('No se ha podido limpiar. Inténtalo de nuevo.')
+    } finally {
+      setCleaning(false)
+    }
   }
 
   const importData = async (file: File) => {
@@ -146,6 +162,9 @@ export function Settings() {
           </button>
           <button className="btn btn-soft btn-block" onClick={() => fileInput.current?.click()}>
             <Icon name="book" size={18} /> Importar recetas
+          </button>
+          <button className="btn btn-ghost btn-block" disabled={cleaning} onClick={() => void cleanPhotos()}>
+            <Icon name="trash" size={18} /> {cleaning ? 'Limpiando…' : 'Borrar fotos que ya no se usan'}
           </button>
         </div>
       </Sheet>

@@ -136,6 +136,11 @@ export function createLocalStore(): DataStore {
     async deletePhoto(id) {
       localStorage.removeItem(PHOTO_PREFIX + id)
     },
+    async listPhotoIds() {
+      return Object.keys(localStorage)
+        .filter((k) => k.startsWith(PHOTO_PREFIX))
+        .map((k) => k.slice(PHOTO_PREFIX.length))
+    },
 
     subscribeSync(cb) {
       cb('local')

@@ -68,7 +68,7 @@ export interface HomeSettings {
   /** Foto de los dos que encabeza Inicio. */
   photo?: PhotoRef
   message?: { text: string; author?: string; updatedAt: number }
-  countdown?: { title: string; emoji: string; /** Fecha objetivo en ms. */ date: number }
+  countdown?: { title: string; /** Fecha objetivo en ms. */ date: number }
 }
 
 /** `denied`: la cuenta de Google no está en la lista de cuentas permitidas. */

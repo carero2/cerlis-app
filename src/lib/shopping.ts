@@ -53,7 +53,7 @@ export function sortItems(items: ShoppingItem[]): ShoppingItem[] {
 }
 
 export function useShoppingActions() {
-  const { store, items } = useData()
+  const { store, items, releasePhotos } = useData()
   const toast = useToast()
 
   const add = useCallback(
@@ -124,11 +124,12 @@ export function useShoppingActions() {
     async (toRemove: ShoppingItem[], message?: string) => {
       if (!toRemove.length) return
       await store.deleteItems(toRemove.map((i) => i.id))
+      releasePhotos(toRemove.map((i) => i.photo?.id))
       toast(message ?? (toRemove.length === 1 ? `${toRemove[0].name} eliminado` : `${toRemove.length} productos eliminados`), {
         action: { label: 'Deshacer', onClick: () => void store.restoreItems(toRemove) },
       })
     },
-    [store, toast],
+    [store, toast, releasePhotos],
   )
 
   return { add, addMany, toggle, remove }

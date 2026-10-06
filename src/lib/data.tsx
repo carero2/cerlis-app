@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { firebaseConfig } from './store/config'
 import { createLocalStore } from './store/local'
 import type { DataStore } from './store/types'
@@ -13,6 +13,11 @@ interface DataContextValue {
   sync: SyncState
   /** true cuando ya llegó la primera tanda de datos. */
   ready: boolean
+  /**
+   * Borra las fotos indicadas cuando ya no las usa nada. Espera a que pase
+   * el plazo de "Deshacer" para no perder la foto si se recupera el elemento.
+   */
+  releasePhotos: (ids: (string | undefined)[]) => void
 }
 
 const DataContext = createContext<DataContextValue | null>(null)
@@ -88,9 +93,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => offs.forEach((off) => off())
   }, [store])
 
+  const latest = useRef({ items, recipes, home })
+  latest.current = { items, recipes, home }
+
+  const releasePhotos = useCallback(
+    (ids: (string | undefined)[]) => {
+      const candidates = ids.filter((id): id is string => !!id)
+      if (!store || !candidates.length) return
+      window.setTimeout(() => {
+        const { items, recipes, home } = latest.current
+        const used = new Set([...items, ...recipes].map((x) => x.photo?.id).concat(home.photo?.id))
+        candidates.filter((id) => !used.has(id)).forEach((id) => void store.deletePhoto(id).catch(console.error))
+      }, 8_000)
+    },
+    [store],
+  )
+
   const value = useMemo<DataContextValue | null>(
-    () => (store ? { store, items, recipes, home, sync, ready: loaded.items && loaded.recipes } : null),
-    [store, items, recipes, home, sync, loaded],
+    () => (store ? { store, items, recipes, home, sync, ready: loaded.items && loaded.recipes, releasePhotos } : null),
+    [store, items, recipes, home, sync, loaded, releasePhotos],
   )
 
   if (error) {

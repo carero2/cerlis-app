@@ -14,6 +14,7 @@ import {
   deleteField,
   doc,
   getDoc,
+  getDocs,
   initializeFirestore,
   onSnapshot,
   persistentLocalCache,
@@ -179,12 +180,27 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
     },
 
     subscribeHome(cb) {
-      return onSnapshot(
-        homeDoc,
-        (snap) => cb((snap.data() as HomeSettings | undefined) ?? {}),
-        // Es opcional: si falla (p. ej. reglas sin actualizar) la app sigue funcionando.
-        (e) => console.warn('settings/home', e),
-      )
+      // Es opcional: si falla (p. ej. reglas sin publicar) la app sigue funcionando
+      // y se reintenta cada poco, para no tener que cerrar la app al arreglarlo.
+      let off: (() => void) | null = null
+      let retry: number | undefined
+      let closed = false
+      const listen = () => {
+        off = onSnapshot(
+          homeDoc,
+          (snap) => cb((snap.data() as HomeSettings | undefined) ?? {}),
+          (e) => {
+            console.warn('settings/home', e)
+            if (!closed) retry = window.setTimeout(listen, 15_000)
+          },
+        )
+      }
+      listen()
+      return () => {
+        closed = true
+        window.clearTimeout(retry)
+        off?.()
+      }
     },
     async updateHome(patch) {
       await setDoc(homeDoc, toUpdate(patch), { merge: true })
@@ -201,6 +217,11 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
     },
     async deletePhoto(id) {
       await deleteDoc(doc(photosCol, id))
+    },
+    async listPhotoIds() {
+      // Descarga las fotos completas: solo se usa al limpiar a mano desde Ajustes.
+      const snap = await getDocs(photosCol)
+      return snap.docs.map((d) => d.id)
     },
 
     subscribeSync(cb) {

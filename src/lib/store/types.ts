@@ -29,6 +29,8 @@ export interface DataStore {
   savePhoto(dataUrl: string): Promise<string>
   getPhoto(id: string): Promise<string | null>
   deletePhoto(id: string): Promise<void>
+  /** Todos los ids de fotos guardadas (para limpiar las que no usa nada). */
+  listPhotoIds(): Promise<string[]>
 
   subscribeSync(cb: (state: SyncState) => void): Unsubscribe
   dispose(): void

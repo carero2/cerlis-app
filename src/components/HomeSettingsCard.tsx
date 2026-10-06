@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { COUNTDOWN_EMOJIS, countdownDateFmt, fromLocalInput, toLocalInput } from '../lib/countdown'
+import { countdownDateFmt, fromLocalInput, toLocalInput } from '../lib/countdown'
 import { useData } from '../lib/data'
 import { savePendingPhoto } from '../lib/photos'
 import { getPrefs } from '../lib/prefs'
@@ -9,6 +9,15 @@ import { Sheet } from './Sheet'
 import { useToast } from './Toast'
 
 const MESSAGE_MAX = 160
+
+/** Mensaje claro cuando Firebase rechaza el guardado. */
+function saveErrorMessage(e: unknown): string {
+  const code = (e as { code?: string }).code
+  if (code === 'permission-denied')
+    return 'Firebase no deja guardar: publica las reglas nuevas en Firestore → Reglas (incluyen "settings").'
+  if (!navigator.onLine) return 'Sin conexión. Inténtalo cuando vuelvas a tener internet.'
+  return 'No se ha podido guardar. Inténtalo de nuevo.'
+}
 
 /**
  * Personalización compartida de Inicio: foto de los dos, un mensaje y una
@@ -22,8 +31,13 @@ export function HomeSettingsCard() {
 
   const removePhoto = async () => {
     const old = home.photo
-    await store.updateHome({ photo: undefined })
-    if (old) void store.deletePhoto(old.id).catch(console.error)
+    try {
+      await store.updateHome({ photo: undefined })
+      if (old) void store.deletePhoto(old.id).catch(console.error)
+    } catch (e) {
+      console.error(e)
+      toast(saveErrorMessage(e))
+    }
   }
 
   return (
@@ -53,15 +67,19 @@ export function HomeSettingsCard() {
             onPhoto={async (p) => {
               if (busy) return
               setBusy(true)
+              const old = home.photo
+              let saved: string | undefined
               try {
-                const old = home.photo
                 const photo = await savePendingPhoto(store, p)
+                saved = photo.id
                 await store.updateHome({ photo })
                 if (old) void store.deletePhoto(old.id).catch(console.error)
                 toast('Foto actualizada 📸')
               } catch (e) {
                 console.error(e)
-                toast('No se ha podido guardar la foto')
+                // Si la foto llegó a subirse pero no se pudo enlazar, la borramos.
+                if (saved) void store.deletePhoto(saved).catch(console.error)
+                toast(saveErrorMessage(e))
               } finally {
                 setBusy(false)
               }
@@ -89,7 +107,7 @@ export function HomeSettingsCard() {
           <span className="row-label">
             Cuenta atrás
             <span className="muted small block row-preview">
-              {home.countdown ? `${home.countdown.emoji} ${home.countdown.title}` : 'Opcional · p. ej. para vuestro viaje'}
+              {home.countdown ? home.countdown.title : 'Opcional · p. ej. para vuestro viaje'}
             </span>
           </span>
           <Icon name="chevron" size={16} className="row-chevron" />
@@ -106,17 +124,32 @@ export function HomeSettingsCard() {
 function MessageSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { home, store } = useData()
   const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (open) setText(home.message?.text ?? '')
+    if (!open) return
+    setText(home.message?.text ?? '')
+    setError(null)
   }, [open, home.message?.text])
 
-  const save = async () => {
+  const write = async (message: NonNullable<typeof home.message> | undefined) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await store.updateHome({ message })
+      onClose()
+    } catch (e) {
+      console.error(e)
+      setError(saveErrorMessage(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const save = () => {
     const t = text.trim()
-    await store.updateHome({
-      message: t ? { text: t, author: getPrefs().name || undefined, updatedAt: Date.now() } : undefined,
-    })
-    onClose()
+    return write(t ? { text: t, author: getPrefs().name || undefined, updatedAt: Date.now() } : undefined)
   }
 
   return (
@@ -128,18 +161,12 @@ function MessageSheet({ open, onClose }: { open: boolean; onClose: () => void })
       footer={
         <div className="row-gap">
           {home.message && (
-            <button
-              className="btn btn-danger-soft"
-              onClick={() => {
-                void store.updateHome({ message: undefined })
-                onClose()
-              }}
-            >
+            <button className="btn btn-danger-soft" disabled={saving} onClick={() => void write(undefined)}>
               Quitar
             </button>
           )}
-          <button className="btn btn-primary btn-grow" onClick={() => void save()}>
-            Guardar
+          <button className="btn btn-primary btn-grow" disabled={saving} onClick={() => void save()}>
+            {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
       }
@@ -158,6 +185,7 @@ function MessageSheet({ open, onClose }: { open: boolean; onClose: () => void })
           {text.length}/{MESSAGE_MAX}
         </span>
       </div>
+      {error && <p className="form-error sheet-error">{error}</p>}
     </Sheet>
   )
 }
@@ -165,14 +193,15 @@ function MessageSheet({ open, onClose }: { open: boolean; onClose: () => void })
 function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { home, store } = useData()
   const [title, setTitle] = useState('')
-  const [emoji, setEmoji] = useState(COUNTDOWN_EMOJIS[0])
   const [date, setDate] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
     const c = home.countdown
     setTitle(c?.title ?? '')
-    setEmoji(c?.emoji ?? COUNTDOWN_EMOJIS[0])
+    setError(null)
     // Por defecto, dentro de una semana a las 9:00.
     const def = new Date()
     def.setDate(def.getDate() + 7)
@@ -183,11 +212,21 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const target = fromLocalInput(date)
   const valid = !!title.trim() && target !== null
 
-  const save = async () => {
-    if (!valid) return
-    await store.updateHome({ countdown: { title: title.trim(), emoji, date: target! } })
-    onClose()
+  const write = async (countdown: NonNullable<typeof home.countdown> | undefined) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await store.updateHome({ countdown })
+      onClose()
+    } catch (e) {
+      console.error(e)
+      setError(saveErrorMessage(e))
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const save = () => (valid ? write({ title: title.trim(), date: target! }) : undefined)
 
   return (
     <Sheet
@@ -198,18 +237,12 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
       footer={
         <div className="row-gap">
           {home.countdown && (
-            <button
-              className="btn btn-danger-soft"
-              onClick={() => {
-                void store.updateHome({ countdown: undefined })
-                onClose()
-              }}
-            >
+            <button className="btn btn-danger-soft" disabled={saving} onClick={() => void write(undefined)}>
               Quitar
             </button>
           )}
-          <button className="btn btn-primary btn-grow" disabled={!valid} onClick={() => void save()}>
-            Guardar
+          <button className="btn btn-primary btn-grow" disabled={!valid || saving} onClick={() => void save()}>
+            {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
       }
@@ -225,14 +258,7 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
         </label>
       </div>
       {target && <p className="muted small sheet-intro capitalize">{countdownDateFmt.format(target)}</p>}
-      <div className="section-label">Icono</div>
-      <div className="emoji-row">
-        {COUNTDOWN_EMOJIS.map((e) => (
-          <button key={e} type="button" className={`emoji-option ${emoji === e ? 'is-selected' : ''}`} onClick={() => setEmoji(e)}>
-            {e}
-          </button>
-        ))}
-      </div>
+      {error && <p className="form-error sheet-error">{error}</p>}
     </Sheet>
   )
 }

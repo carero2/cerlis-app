@@ -15,7 +15,7 @@ import { goBack, navigate, paths } from '../lib/router'
 import type { RecipeDraft } from '../lib/types'
 
 export function RecipeEditor({ id, aiFocus }: { id?: string; aiFocus?: boolean }) {
-  const { recipes, store } = useData()
+  const { recipes, store, releasePhotos } = useData()
   const toast = useToast()
   // La IA va a través de Firebase: solo disponible con sesión iniciada.
   const aiAvailable = !!useUser()
@@ -95,6 +95,7 @@ export function RecipeEditor({ id, aiFocus }: { id?: string; aiFocus?: boolean }
   const remove = async () => {
     if (!existing) return
     await store.deleteRecipe(existing.id)
+    releasePhotos([existing.photo?.id])
     toast(`“${existing.title}” eliminada`, {
       action: {
         label: 'Deshacer',

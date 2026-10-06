@@ -3172,8 +3172,6 @@ a {
   color: var(--text-3);
 }
 
-.emoji-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+.sheet-error {
+  margin-top: 12px;
 }

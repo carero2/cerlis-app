@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 
-export const COUNTDOWN_EMOJIS = ['✈️', '🏖️', '🏔️', '🎉', '🎂', '💍', '❤️', '🏠', '🎄', '🎟️']
-
 export interface Remaining {
   /** El momento ya ha llegado (y estamos dentro de las 24 h siguientes). */
   arrived: boolean
