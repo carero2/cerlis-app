@@ -3777,3 +3777,171 @@ a {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
 }
+
+/* ==========================================================================
+   Compra · varias listas y pasillos editables
+   ========================================================================== */
+
+.list-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: -4px calc(-1 * var(--gutter)) 14px;
+  padding: 2px var(--gutter);
+  scrollbar-width: none;
+}
+
+.list-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.list-tab {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--bg-elev);
+  box-shadow: inset 0 0 0 1px var(--sep);
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    transform 0.12s;
+}
+
+.list-tab:active {
+  transform: scale(0.96);
+}
+
+.list-tab.is-active {
+  color: #fff;
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.list-tab-emoji {
+  font-size: 16px;
+}
+
+.list-tab-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.list-tab.is-active .list-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.list-tab-add {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent-soft);
+  background: transparent;
+  padding: 0 12px;
+}
+
+.home-item-list {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-3);
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-label-row .link-btn {
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0;
+}
+
+.chip-grid-lists {
+  margin-bottom: 18px;
+}
+
+.manage-intro {
+  margin: 12px 4px 12px;
+}
+
+.manage-list > * + * {
+  box-shadow: inset 0 0.5px 0 var(--sep);
+}
+
+.manage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  min-height: 52px;
+}
+
+.emoji-input {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--bg-sunken);
+  text-align: center;
+  font-size: 20px;
+}
+
+.emoji-input::placeholder {
+  color: var(--text-3);
+  font-size: 16px;
+}
+
+.manage-name {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 2px;
+}
+
+.manage-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.manage-actions {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.manage-actions .icon-btn {
+  width: 32px;
+}
+
+.manage-actions .icon-btn:disabled {
+  opacity: 0.25;
+}
+
+.manage-new .manage-name::placeholder {
+  color: var(--text-3);
+}
+
+.manage-reset {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--text-2);
+}

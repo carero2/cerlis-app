@@ -1,9 +1,10 @@
 import { useCallback } from 'react'
 import { useToast } from '../components/Toast'
-import { guessCategory, normalize, parseItemInput } from './categories'
+import { normalize, parseItemInput } from './categories'
 import { useData } from './data'
 import { savePendingPhoto, type PendingPhoto } from './photos'
 import { getPrefs } from './prefs'
+import { useShopConfig } from './shopConfig'
 import type { ShoppingItem } from './types'
 
 const HISTORY_KEY = 'cerlis:history'
@@ -55,13 +56,15 @@ export function sortItems(items: ShoppingItem[]): ShoppingItem[] {
 export function useShoppingActions() {
   const { store, items, releasePhotos } = useData()
   const toast = useToast()
+  const config = useShopConfig()
 
   const add = useCallback(
-    async (raw: string, pendingPhoto?: PendingPhoto) => {
+    async (raw: string, pendingPhoto?: PendingPhoto, listId = config.activeListId) => {
       const { name, quantity } = parseItemInput(raw)
       if (!name) return
       const key = normalize(name)
-      const existing = items.find((it) => normalize(it.name) === key)
+      // Cada lista es independiente: el mismo producto puede estar en el súper y en la farmacia.
+      const existing = items.find((it) => normalize(it.name) === key && config.listOf(it) === listId)
       remember([name])
       const photo = pendingPhoto ? await savePendingPhoto(store, pendingPhoto) : undefined
       if (existing) {
@@ -83,21 +86,23 @@ export function useShoppingActions() {
           name,
           quantity,
           photo,
-          category: guessCategory(name),
+          category: config.guess(name),
+          listId,
           addedBy: getPrefs().name || undefined,
         },
       ])
     },
-    [items, store, toast],
+    [items, store, toast, config],
   )
 
   const addMany = useCallback(
-    async (entries: { name: string; quantity?: string; recipeId?: string }[]) => {
-      const pending = new Set(items.filter((i) => !i.checked).map((i) => normalize(i.name)))
+    async (entries: { name: string; quantity?: string; recipeId?: string }[], listId = config.activeListId) => {
+      const inList = items.filter((i) => config.listOf(i) === listId)
+      const pending = new Set(inList.filter((i) => !i.checked).map((i) => normalize(i.name)))
       const fresh = entries.filter((e) => !pending.has(normalize(e.name)))
       const author = getPrefs().name || undefined
       // Los que estaban ya comprados se reactivan.
-      const reactivate = items.filter(
+      const reactivate = inList.filter(
         (i) => i.checked && fresh.some((e) => normalize(e.name) === normalize(i.name)),
       )
       await Promise.all(reactivate.map((i) => store.updateItem(i.id, { checked: false, checkedAt: undefined })))
@@ -105,13 +110,13 @@ export function useShoppingActions() {
       const toCreate = fresh.filter((e) => !reactivated.has(normalize(e.name)))
       if (toCreate.length) {
         await store.addItems(
-          toCreate.map((e) => ({ ...e, category: guessCategory(e.name), addedBy: author })),
+          toCreate.map((e) => ({ ...e, category: config.guess(e.name), listId, addedBy: author })),
         )
       }
       remember(entries.map((e) => e.name))
       return fresh.length
     },
-    [items, store],
+    [items, store, config],
   )
 
   const toggle = useCallback(

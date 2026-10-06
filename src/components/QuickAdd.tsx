@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import type { PendingPhoto } from '../lib/photos'
-import { CATEGORY_BY_ID, guessCategory, normalize, parseItemInput } from '../lib/categories'
+import { normalize, parseItemInput } from '../lib/categories'
 import { useData } from '../lib/data'
+import { useShopConfig } from '../lib/shopConfig'
 import { suggestFromHistory, useShoppingActions } from '../lib/shopping'
 import { Icon } from './Icon'
 import { PhotoInput } from './Photo'
@@ -13,13 +14,14 @@ export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?
   const input = useRef<HTMLInputElement>(null)
   const { items } = useData()
   const { add } = useShoppingActions()
+  const config = useShopConfig()
 
   const parsed = text.trim() ? parseItemInput(text) : null
-  const category = parsed ? CATEGORY_BY_ID[guessCategory(parsed.name)] : null
+  const category = parsed ? config.categoryOf(config.guess(parsed.name)) : null
 
   const pendingNames = useMemo(
-    () => new Set(items.filter((i) => !i.checked).map((i) => normalize(i.name))),
-    [items],
+    () => new Set(items.filter((i) => !i.checked && config.listOf(i) === config.activeListId).map((i) => normalize(i.name))),
+    [items, config],
   )
   const suggestions = useMemo(
     () => (focused ? suggestFromHistory(parsed?.name ?? '', pendingNames, 8) : []),

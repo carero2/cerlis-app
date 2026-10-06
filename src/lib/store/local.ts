@@ -1,5 +1,5 @@
 import { uid } from '../ids'
-import type { CalendarEvent, HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem } from '../types'
+import type { CalendarEvent, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem } from '../types'
 import type { DataStore } from './types'
 
 const ITEMS_KEY = 'cerlis:items'
@@ -7,6 +7,7 @@ const RECIPES_KEY = 'cerlis:recipes'
 const PHOTO_PREFIX = 'cerlis:photo:'
 const HOME_KEY = 'cerlis:home'
 const EVENTS_KEY = 'cerlis:events'
+const SHOPPING_KEY = 'cerlis:shopping'
 
 function readHome(): HomeSettings {
   try {
@@ -34,6 +35,15 @@ export function createLocalStore(): DataStore {
   const recipeListeners = new Set<(recipes: Recipe[]) => void>()
   const homeListeners = new Set<(home: HomeSettings) => void>()
   const eventListeners = new Set<(events: CalendarEvent[]) => void>()
+  const shoppingListeners = new Set<(config: ShoppingConfig) => void>()
+  const readShopping = (): ShoppingConfig => {
+    try {
+      return JSON.parse(localStorage.getItem(SHOPPING_KEY) ?? '{}') as ShoppingConfig
+    } catch {
+      return {}
+    }
+  }
+  let shopping = readShopping()
   let events = read<CalendarEvent>(EVENTS_KEY)
   const saveEvents = (next: CalendarEvent[]) => {
     events = next
@@ -69,6 +79,9 @@ export function createLocalStore(): DataStore {
     } else if (e.key === EVENTS_KEY) {
       events = read(EVENTS_KEY)
       eventListeners.forEach((cb) => cb(events))
+    } else if (e.key === SHOPPING_KEY) {
+      shopping = readShopping()
+      shoppingListeners.forEach((cb) => cb(shopping))
     } else if (e.key === HOME_KEY) {
       home = readHome()
       homeListeners.forEach((cb) => cb(home))
@@ -142,6 +155,18 @@ export function createLocalStore(): DataStore {
       saveEvents(events.filter((e) => e.id !== id))
     },
 
+    subscribeShopping(cb) {
+      shoppingListeners.add(cb)
+      cb(shopping)
+      return () => shoppingListeners.delete(cb)
+    },
+    async updateShopping(patch) {
+      const learned = patch.learned ? { ...shopping.learned, ...patch.learned } : shopping.learned
+      shopping = JSON.parse(JSON.stringify({ ...shopping, ...patch, learned })) as ShoppingConfig
+      localStorage.setItem(SHOPPING_KEY, JSON.stringify(shopping))
+      shoppingListeners.forEach((cb) => cb(shopping))
+    },
+
     subscribeHome(cb) {
       homeListeners.add(cb)
       cb(home)
@@ -182,6 +207,7 @@ export function createLocalStore(): DataStore {
       recipeListeners.clear()
       homeListeners.clear()
       eventListeners.clear()
+      shoppingListeners.clear()
     },
   }
 }

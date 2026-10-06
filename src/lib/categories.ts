@@ -106,6 +106,8 @@ export const CATEGORIES: Category[] = [
       'papel higienico', 'champu', 'gel', 'jabon', 'pasta de dientes', 'dentifrico', 'cepillo',
       'desodorante', 'compresa', 'tampon', 'crema', 'colonia', 'cuchilla', 'maquinilla', 'algodon',
       'bastoncillo', 'toallita', 'panuelo', 'protector solar', 'enjuague', 'hilo dental', 'acondicionador',
+      'ibuprofeno', 'paracetamol', 'aspirina', 'tirita', 'vitamina', 'jarabe', 'suero', 'gasa', 'betadine',
+      'mascarilla', 'termometro', 'antiseptico', 'colirio', 'pastillas para', 'crema solar',
     ],
   },
   { id: 'otros', label: 'Otros', emoji: '🛒', keywords: [] },

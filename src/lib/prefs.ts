@@ -9,6 +9,8 @@ export interface Prefs {
   groupByCategory: boolean
   /** Ocultar la sugerencia de personalizar Inicio. */
   hideHomeTip: boolean
+  /** Lista de la compra abierta en este móvil. */
+  activeList?: string
 }
 
 const KEY = 'cerlis:prefs'

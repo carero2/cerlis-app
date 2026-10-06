@@ -27,7 +27,10 @@ export interface ShoppingItem {
   name: string
   /** Cantidad libre: "2", "500 g", "1 docena"… */
   quantity?: string
-  category: CategoryId
+  /** Id del pasillo (de los predefinidos o creado por vosotros). */
+  category: string
+  /** Lista (tienda) a la que pertenece; sin valor = la primera lista. */
+  listId?: string
   checked: boolean
   addedBy?: string
   /** Receta de la que procede el ingrediente, si aplica. */
@@ -62,6 +65,28 @@ export interface Recipe {
 
 export type NewItem = Omit<ShoppingItem, 'id' | 'createdAt' | 'checked'> & { checked?: boolean }
 export type RecipeDraft = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
+
+/** Una lista de la compra por tienda o tipo de tienda. */
+export interface ShopList {
+  id: string
+  name: string
+  emoji?: string
+}
+
+/** Pasillo o categoría de productos. */
+export interface CategoryDef {
+  id: string
+  label: string
+  emoji?: string
+}
+
+/** Configuración compartida de la compra (settings/shopping). */
+export interface ShoppingConfig {
+  lists?: ShopList[]
+  categories?: CategoryDef[]
+  /** Pasillo aprendido por producto (nombre normalizado → id de pasillo). */
+  learned?: Record<string, string>
+}
 
 export type Repeat = 'weekly' | 'monthly' | 'yearly'
 

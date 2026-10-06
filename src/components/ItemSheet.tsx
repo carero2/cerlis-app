@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { CATEGORIES } from '../lib/categories'
+import { normalize } from '../lib/categories'
 import { useData } from '../lib/data'
 import { savePendingPhoto, type PendingPhoto } from '../lib/photos'
-import type { CategoryId, PhotoRef, ShoppingItem } from '../lib/types'
+import { useShopConfig } from '../lib/shopConfig'
+import type { PhotoRef, ShoppingItem } from '../lib/types'
 import { Icon } from './Icon'
 import { PhotoInput } from './Photo'
 import { Sheet } from './Sheet'
@@ -13,12 +14,16 @@ interface Props {
   onClose: () => void
   onSave: (patch: Partial<ShoppingItem>) => void
   onDelete: () => void
+  /** Abre la gestión de listas y pasillos. */
+  onManage?: () => void
 }
 
-export function ItemSheet({ item, onClose, onSave, onDelete }: Props) {
+export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) {
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
-  const [category, setCategory] = useState<CategoryId>('otros')
+  const [category, setCategory] = useState('otros')
+  const [listId, setListId] = useState('')
+  const config = useShopConfig()
   const [photo, setPhoto] = useState<PhotoRef | undefined>()
   const [pending, setPending] = useState<PendingPhoto | null>(null)
   const [saving, setSaving] = useState(false)
@@ -29,10 +34,12 @@ export function ItemSheet({ item, onClose, onSave, onDelete }: Props) {
     if (item) {
       setName(item.name)
       setQuantity(item.quantity ?? '')
-      setCategory(item.category)
+      setCategory(config.categoryOf(item.category).id)
+      setListId(config.listOf(item))
       setPhoto(item.photo)
       setPending(null)
     }
+    // Solo al abrir otro producto; la configuración puede cambiar mientras tanto.
   }, [item])
 
   const save = async () => {
@@ -41,7 +48,11 @@ export function ItemSheet({ item, onClose, onSave, onDelete }: Props) {
     try {
       const nextPhoto = pending ? await savePendingPhoto(store, pending) : photo
       if (item.photo && item.photo.id !== nextPhoto?.id) void store.deletePhoto(item.photo.id).catch(console.error)
-      onSave({ name: name.trim(), quantity: quantity.trim() || undefined, category, photo: nextPhoto })
+      onSave({ name: name.trim(), quantity: quantity.trim() || undefined, category, listId, photo: nextPhoto })
+      // Si se corrige el pasillo, se recuerda para la próxima vez que se añada.
+      if (category !== item.category) {
+        void store.updateShopping({ learned: { [normalize(name.trim())]: category } }).catch(console.error)
+      }
       onClose()
     } catch (e) {
       console.error(e)
@@ -120,9 +131,33 @@ export function ItemSheet({ item, onClose, onSave, onDelete }: Props) {
             </PhotoInput>
           )}
         </div>
-        <div className="section-label">Pasillo</div>
+        {config.lists.length > 1 && (
+          <>
+            <div className="section-label">Lista</div>
+            <div className="chip-grid chip-grid-lists">
+              {config.lists.map((l) => (
+                <button
+                  type="button"
+                  key={l.id}
+                  className={`chip ${listId === l.id ? 'is-selected' : ''}`}
+                  onClick={() => setListId(l.id)}
+                >
+                  {l.emoji && <span>{l.emoji}</span>} {l.name}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="section-label section-label-row">
+          Pasillo
+          {onManage && (
+            <button type="button" className="link-btn" onClick={onManage}>
+              Editar pasillos
+            </button>
+          )}
+        </div>
         <div className="chip-grid">
-          {CATEGORIES.map((c) => (
+          {config.categories.map((c) => (
             <button
               type="button"
               key={c.id}

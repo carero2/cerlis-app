@@ -1,4 +1,4 @@
-import type { CalendarEvent, EventDraft, HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, EventDraft, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
 
 export type Unsubscribe = () => void
 
@@ -25,6 +25,10 @@ export interface DataStore {
   createEvent(draft: EventDraft): Promise<string>
   updateEvent(id: string, patch: Partial<EventDraft>): Promise<void>
   deleteEvent(id: string): Promise<void>
+
+  subscribeShopping(cb: (config: ShoppingConfig) => void): Unsubscribe
+  /** Sustituye los campos indicados; `learned` se fusiona. */
+  updateShopping(patch: Partial<ShoppingConfig>): Promise<void>
 
   subscribeHome(cb: (home: HomeSettings) => void): Unsubscribe
   /** Un campo a `undefined` lo elimina. */

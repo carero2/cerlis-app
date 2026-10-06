@@ -4,9 +4,11 @@ Lista de la compra y recetario compartido para dos, pensado para usarse como
 app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
 
 - **Inicio**: resumen de la lista, añadido rápido y sugerencia de qué cocinar.
-- **Compra**: lista sincronizada en tiempo real, agrupada por pasillos,
-  detección automática de cantidad (“2 leche”, “tomates 1 kg”), deslizar para
-  editar/borrar, “Deshacer” y sugerencias de lo que soléis comprar.
+- **Compra**: varias listas por tienda (súper, farmacia…), sincronizadas en
+  tiempo real y agrupadas por pasillos editables (crear, renombrar, ordenar,
+  borrar). La app aprende el pasillo de cada producto cuando lo corriges.
+  Detección de cantidad (“2 leche”), deslizar para editar/borrar, “Deshacer”
+  y sugerencias de lo que soléis comprar.
 - **Recetas**: recetario con búsqueda, etiquetas y favoritas. Cada receta
   tiene **ingredientes** y **preparación**; con un toque mandas los
   ingredientes que os faltan a la lista. Modo cocina para que no se apague la
@@ -98,12 +100,14 @@ firestore.rules     Reglas de seguridad
 ### Modelo de datos
 
 ```
-items/*    { name, quantity?, category, checked, addedBy?, recipeId?, photo?, createdAt, checkedAt? }
+items/*    { name, quantity?, category, listId?, checked, addedBy?, recipeId?, photo?, createdAt, checkedAt? }
 recipes/*  { title, emoji, ingredients: string[], steps: string[], photo?,
              servings?, time?, tags[], notes?, source?, favorite, … }
 photos/*   { data: "data:image/jpeg;base64,…", createdAt }
 events/*   { title, date: "AAAA-MM-DD", endDate?, allDay, start?: "HH:mm", end?,
              repeat?: weekly|monthly|yearly, who?: uid (o "los dos"), notes?, createdBy? }
+settings/shopping { lists?: [{ id, name, emoji? }], categories?: [{ id, label, emoji? }],
+                    learned?: { [producto]: idPasillo } }
 settings/home { members?: { [uid]: { name, email?, color } }, photo?, message?: { text, author?, updatedAt },
                 countdown?: { title, emoji, date } }
 

@@ -6,12 +6,13 @@ import { Page } from '../components/Page'
 import { PhotoViewer } from '../components/Photo'
 import { QuickAdd } from '../components/QuickAdd'
 import { ConfirmSheet } from '../components/Sheet'
+import { ShoppingManageSheet, type ManageTab } from '../components/ShoppingManageSheet'
 import { SwipeRow } from '../components/SwipeRow'
-import { CATEGORIES } from '../lib/categories'
 import { useData } from '../lib/data'
 import { usePhoto } from '../lib/photos'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { navigate, paths } from '../lib/router'
+import { useShopConfig } from '../lib/shopConfig'
 import { sortItems, useShoppingActions } from '../lib/shopping'
 import type { ShoppingItem } from '../lib/types'
 
@@ -25,22 +26,33 @@ export function ShoppingList() {
   const [viewing, setViewing] = useState<ShoppingItem | null>(null)
   const viewingPhoto = usePhoto(viewing?.photo)
   const closeViewer = useCallback(() => setViewing(null), [])
+  const [manage, setManage] = useState<ManageTab | null>(null)
+  const config = useShopConfig()
+  const activeList = config.lists.find((l) => l.id === config.activeListId)!
 
-  const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
+  // Productos de la lista abierta.
+  const listItems = useMemo(() => items.filter((i) => config.listOf(i) === config.activeListId), [items, config])
+  const pendingByList = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const i of items) if (!i.checked) map.set(config.listOf(i), (map.get(config.listOf(i)) ?? 0) + 1)
+    return map
+  }, [items, config])
+
+  const pending = useMemo(() => sortItems(listItems.filter((i) => !i.checked)), [listItems])
   const checked = useMemo(
-    () => [...items.filter((i) => i.checked)].sort((a, b) => (b.checkedAt ?? 0) - (a.checkedAt ?? 0)),
-    [items],
+    () => [...listItems.filter((i) => i.checked)].sort((a, b) => (b.checkedAt ?? 0) - (a.checkedAt ?? 0)),
+    [listItems],
   )
 
   const groups = useMemo(() => {
-    if (!groupByCategory) return [{ id: 'all', label: '', emoji: '', items: pending }]
-    return CATEGORIES.map((c) => ({ ...c, items: pending.filter((i) => i.category === c.id) })).filter(
-      (g) => g.items.length,
-    )
-  }, [pending, groupByCategory])
+    if (!groupByCategory) return [{ id: 'all', label: '', emoji: '' as string | undefined, items: pending }]
+    return config.categories
+      .map((c) => ({ ...c, items: pending.filter((i) => config.categoryOf(i.category).id === c.id) }))
+      .filter((g) => g.items.length)
+  }, [pending, groupByCategory, config])
 
   const recipeTitle = (id?: string) => (id ? recipes.find((r) => r.id === id)?.title : undefined)
-  const total = items.length
+  const total = listItems.length
   const progress = total ? checked.length / total : 0
 
   const renderItem = (item: ShoppingItem) => {
@@ -97,17 +109,46 @@ export function ShoppingList() {
         ) : undefined
       }
       right={
-        total > 0 ? (
-          <button
-            className="nav-btn nav-text"
-            onClick={() => setPrefs({ groupByCategory: !groupByCategory })}
-            aria-label={groupByCategory ? 'Ver como lista simple' : 'Agrupar por pasillos'}
-          >
-            <Icon name={groupByCategory ? 'list' : 'layers'} size={22} />
+        <>
+          {total > 0 && (
+            <button
+              className="nav-btn nav-icon"
+              onClick={() => setPrefs({ groupByCategory: !groupByCategory })}
+              aria-label={groupByCategory ? 'Ver como lista simple' : 'Agrupar por pasillos'}
+            >
+              <Icon name={groupByCategory ? 'list' : 'layers'} size={22} />
+            </button>
+          )}
+          <button className="nav-btn nav-icon" onClick={() => setManage('lists')} aria-label="Listas y pasillos">
+            <Icon name="sliders" size={22} />
           </button>
-        ) : undefined
+        </>
       }
     >
+      <div className="list-tabs" role="tablist" aria-label="Listas">
+        {config.lists.map((l) => {
+          const n = pendingByList.get(l.id) ?? 0
+          const active = l.id === config.activeListId
+          return (
+            <button
+              key={l.id}
+              role="tab"
+              aria-selected={active}
+              className={`list-tab ${active ? 'is-active' : ''}`}
+              onClick={() => setPrefs({ activeList: l.id })}
+            >
+              {l.emoji && <span className="list-tab-emoji">{l.emoji}</span>}
+              {l.name}
+              {n > 0 && <span className="list-tab-count">{n}</span>}
+            </button>
+          )
+        })}
+        <button className="list-tab list-tab-add" onClick={() => setManage('lists')} aria-label="Nueva lista">
+          <Icon name="plus" size={16} />
+          {config.lists.length === 1 && 'Nueva lista'}
+        </button>
+      </div>
+
       {total > 0 && (
         <div className="progress" aria-hidden>
           <div className="progress-bar" style={{ transform: `scaleX(${progress})` }} />
@@ -120,8 +161,8 @@ export function ShoppingList() {
 
       {total === 0 && (
         <EmptyState
-          emoji="🧺"
-          title="La lista está vacía"
+          emoji={activeList.emoji ?? '🧺'}
+          title={config.lists.length > 1 ? `${activeList.name}: nada pendiente` : 'La lista está vacía'}
           action={
             recipes.length > 0 ? (
               <button className="btn btn-soft" onClick={() => navigate(paths.recipes)}>
@@ -179,8 +220,13 @@ export function ShoppingList() {
       )}
 
       <PhotoViewer src={viewing ? viewingPhoto : null} alt={viewing?.name} onClose={closeViewer} />
+      <ShoppingManageSheet open={manage !== null} tab={manage ?? 'lists'} onTabChange={setManage} onClose={() => setManage(null)} />
       <ItemSheet
         item={editing}
+        onManage={() => {
+          setEditing(null)
+          setManage('categories')
+        }}
         onClose={() => setEditing(null)}
         onSave={(patch) => editing && void store.updateItem(editing.id, patch)}
         onDelete={() => editing && void remove([editing])}
@@ -190,13 +236,13 @@ export function ShoppingList() {
         title={confirmClear === 'all' ? '¿Borrar toda la lista?' : '¿Vaciar el carrito?'}
         message={
           confirmClear === 'all'
-            ? `Se eliminarán los ${total} productos. Podrás deshacerlo justo después.`
+            ? `Se eliminarán los ${total} productos de “${activeList.name}”. Podrás deshacerlo justo después.`
             : `Se quitarán ${checked.length} producto${checked.length === 1 ? '' : 's'} ya comprado${checked.length === 1 ? '' : 's'}.`
         }
         confirmLabel={confirmClear === 'all' ? 'Borrar todo' : 'Vaciar carrito'}
         destructive
         onConfirm={() =>
-          void remove(confirmClear === 'all' ? items : checked, confirmClear === 'all' ? 'Lista borrada' : 'Carrito vaciado')
+          void remove(confirmClear === 'all' ? listItems : checked, confirmClear === 'all' ? 'Lista borrada' : 'Carrito vaciado')
         }
         onClose={() => setConfirmClear(null)}
       />

@@ -26,7 +26,7 @@ import {
   type FirestoreError,
 } from 'firebase/firestore'
 import { uid } from '../ids'
-import type { CalendarEvent, HomeSettings, Recipe, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from '../types'
 import type { DataStore } from './types'
 import type { FirebaseConfig } from './config'
 
@@ -101,6 +101,8 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const eventsCol = collection(db, 'events')
   // Un único documento con la personalización compartida de Inicio.
   const homeDoc = doc(db, 'settings', 'home')
+  // Listas (tiendas), pasillos y pasillos aprendidos, compartidos.
+  const shoppingDoc = doc(db, 'settings', 'shopping')
 
   const syncListeners = new Set<(s: SyncState) => void>()
   let sync: SyncState = navigator.onLine ? 'connecting' : 'offline'
@@ -218,6 +220,15 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
     },
     async deleteEvent(id) {
       await deleteDoc(doc(eventsCol, id))
+    },
+
+    subscribeShopping(cb) {
+      return listenOptional('settings/shopping', (onFail) =>
+        onSnapshot(shoppingDoc, (snap) => cb((snap.data() as ShoppingConfig | undefined) ?? {}), onFail),
+      )
+    },
+    async updateShopping(patch) {
+      await setDoc(shoppingDoc, toUpdate(patch), { merge: true })
     },
 
     subscribeHome(cb) {

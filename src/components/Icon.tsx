@@ -148,6 +148,14 @@ const PATHS = {
       <path d="M10 8l-4 4 4 4M6 12h9" />
     </>
   ),
+  sliders: (
+    <>
+      <path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1" />
+      <circle cx="15" cy="6.5" r="2" />
+      <circle cx="9" cy="12" r="2" />
+      <circle cx="17" cy="17.5" r="2" />
+    </>
+  ),
   calendar: (
     <>
       <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />

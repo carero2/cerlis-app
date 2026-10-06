@@ -1,14 +1,13 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { Page } from '../components/Page'
-import { PhotoViewer } from '../components/Photo'
 import { QuickAdd } from '../components/QuickAdd'
 import { useUser } from '../lib/auth'
 import { fromKey, relativeDay, timeLabel, upcoming } from '../lib/calendar'
-import { CATEGORY_BY_ID } from '../lib/categories'
 import { countdownDateFmt, remaining, useNow } from '../lib/countdown'
 import { useData } from '../lib/data'
 import { usePeople } from '../lib/people'
+import { useShopConfig } from '../lib/shopConfig'
 import { usePhoto } from '../lib/photos'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { formatTime, recipeTint } from '../lib/recipes'
@@ -32,9 +31,9 @@ export function Home() {
   const { name, hideHomeTip } = usePrefs()
   const user = useUser()
   const { toggle } = useShoppingActions()
+  const { categoryOf, lists, listOf } = useShopConfig()
+  const listName = (id: string) => lists.find((l) => l.id === id)
   const now = useNow()
-  const [viewer, setViewer] = useState(false)
-  const closeViewer = useCallback(() => setViewer(false), [])
   const heroPhoto = usePhoto(home.photo)
 
   const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
@@ -48,9 +47,9 @@ export function Home() {
     <Page title="Inicio" className="theme-home home-page" hideLargeTitle overlay>
       <header className={`home-hero ${heroPhoto ? 'has-photo' : ''} ${glassPos ? `glass-${glassPos}` : ''}`}>
         {heroPhoto && (
-          <button className="home-hero-photo" onClick={() => setViewer(true)} aria-label="Ver foto">
+          <div className="home-hero-photo">
             <img src={heroPhoto} alt="" />
-          </button>
+          </div>
         )}
         <div className="home-hero-top">
           <button className="home-avatar" onClick={() => switchTab(paths.settings)} aria-label="Ajustes">
@@ -76,7 +75,6 @@ export function Home() {
         </div>
         {glassPos === 'bottom' && <CountdownGlass countdown={countdown!} now={now} />}
       </header>
-      {heroPhoto && <PhotoViewer src={viewer ? heroPhoto : null} onClose={closeViewer} />}
 
       <div className="home-feed">
         {home.message && <MessageCard message={home.message} />}
@@ -123,9 +121,12 @@ export function Home() {
                       {i.photo ? (
                         <img className="home-item-thumb" src={i.photo.thumb} alt="" />
                       ) : (
-                        <span className="home-item-emoji">{CATEGORY_BY_ID[i.category]?.emoji}</span>
+                        <span className="home-item-emoji">{categoryOf(i.category).emoji}</span>
                       )}
                       <span className="home-item-name">{i.name}</span>
+                      {lists.length > 1 && (
+                        <span className="home-item-list">{listName(listOf(i))?.emoji ?? listName(listOf(i))?.name}</span>
+                      )}
                       {i.quantity && <span className="qty-pill">{i.quantity}</span>}
                     </button>
                   </li>
