@@ -3480,8 +3480,8 @@ a {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
-  background: var(--accent);
+  width: 5px;
+  background: var(--ev, var(--accent));
 }
 
 .event-time {
@@ -3648,4 +3648,132 @@ a {
 
 .field-inline > span {
   white-space: nowrap;
+}
+
+/* Colores por persona */
+.upcoming-row .upcoming-day,
+.agenda-row .agenda-date {
+  background: color-mix(in srgb, var(--ev, var(--accent)) 15%, transparent);
+  color: var(--ev, var(--accent));
+}
+
+.event-card .event-allday,
+.event-card .event-meta {
+  color: var(--ev, var(--accent)) !important;
+}
+
+.event-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.who-tag {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+  color: var(--ev, var(--accent));
+  background: color-mix(in srgb, var(--ev, var(--accent)) 14%, transparent);
+}
+
+.cal-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 8px 0 2px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.who-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.who-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px 0 12px;
+  border-radius: 19px;
+  background: var(--bg-elev);
+  box-shadow: inset 0 0 0 1.5px var(--sep);
+  font-size: 15px;
+  font-weight: 500;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s,
+    color 0.15s;
+}
+
+.who-chip i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--who);
+}
+
+.who-chip.is-selected {
+  color: var(--who);
+  background: color-mix(in srgb, var(--who) 14%, var(--bg-elev));
+  box-shadow: inset 0 0 0 2px var(--who);
+  font-weight: 600;
+}
+
+.color-row {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.color-swatches {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 4px 4px 42px;
+}
+
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  position: relative;
+  transition: transform 0.12s;
+}
+
+.swatch:active {
+  transform: scale(0.9);
+}
+
+.swatch.is-selected {
+  box-shadow:
+    0 0 0 2px var(--bg-elev),
+    0 0 0 4px currentColor;
+  color: var(--text);
+}
+
+.swatch.is-taken::after {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
 }

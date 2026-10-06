@@ -13,7 +13,9 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
   pantalla.
 - **Calendario**: planes compartidos con vista de mes, eventos de todo el día,
   con hora o de varios días (viajes), repeticiones semanales, mensuales o
-  anuales (cumpleaños, aniversarios) y notas. Los próximos salen en Inicio.
+  anuales (cumpleaños, aniversarios) y notas. Cada plan es de uno de los
+  dos o de ambos, con su color (cada uno elige el suyo en Ajustes). Los
+  próximos salen en Inicio.
 - **Ajustes**: tu nombre, foto de los dos, mensaje y cuenta atrás para
   Inicio (opcionales y compartidos), tema y copia de seguridad.
 
@@ -101,8 +103,8 @@ recipes/*  { title, emoji, ingredients: string[], steps: string[], photo?,
              servings?, time?, tags[], notes?, source?, favorite, … }
 photos/*   { data: "data:image/jpeg;base64,…", createdAt }
 events/*   { title, date: "AAAA-MM-DD", endDate?, allDay, start?: "HH:mm", end?,
-             repeat?: weekly|monthly|yearly, notes?, createdBy? }
-settings/home { photo?, message?: { text, author?, updatedAt },
+             repeat?: weekly|monthly|yearly, who?: uid (o "los dos"), notes?, createdBy? }
+settings/home { members?: { [uid]: { name, email?, color } }, photo?, message?: { text, author?, updatedAt },
                 countdown?: { title, emoji, date } }
 
 photo = { id, thumb }   // id de photos/* + miniatura JPEG de ~360 px

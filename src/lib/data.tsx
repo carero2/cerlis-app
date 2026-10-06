@@ -14,6 +14,8 @@ interface DataContextValue {
   sync: SyncState
   /** true cuando ya llegó la primera tanda de datos. */
   ready: boolean
+  /** true cuando ya se ha leído la personalización compartida. */
+  homeReady: boolean
   /**
    * Borra las fotos indicadas cuando ya no las usa nada. Espera a que pase
    * el plazo de "Deshacer" para no perder la foto si se recupera el elemento.
@@ -42,14 +44,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [home, setHome] = useState<HomeSettings>({})
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [sync, setSync] = useState<SyncState>('connecting')
-  const [loaded, setLoaded] = useState({ items: false, recipes: false })
+  const [loaded, setLoaded] = useState({ items: false, recipes: false, home: false })
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     let created: DataStore | null = null
     setStore(null)
-    setLoaded({ items: false, recipes: false })
+    setLoaded({ items: false, recipes: false, home: false })
     setError(null)
 
     async function boot() {
@@ -89,7 +91,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setRecipes(next)
         setLoaded((l) => (l.recipes ? l : { ...l, recipes: true }))
       }),
-      store.subscribeHome(setHome),
+      store.subscribeHome((next) => {
+        setHome(next)
+        setLoaded((l) => (l.home ? l : { ...l, home: true }))
+      }),
       store.subscribeEvents(setEvents),
       store.subscribeSync(setSync),
     ]
@@ -113,7 +118,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<DataContextValue | null>(
-    () => (store ? { store, items, recipes, home, events, sync, ready: loaded.items && loaded.recipes, releasePhotos } : null),
+    () =>
+      store
+        ? { store, items, recipes, home, events, sync, ready: loaded.items && loaded.recipes, homeReady: loaded.home, releasePhotos }
+        : null,
     [store, items, recipes, home, events, sync, loaded, releasePhotos],
   )
 

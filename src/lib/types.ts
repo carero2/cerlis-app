@@ -81,6 +81,8 @@ export interface CalendarEvent {
   start?: string
   end?: string
   repeat?: Repeat
+  /** De quién es el plan: "both" (los dos, por defecto) o el uid de uno. */
+  who?: string
   notes?: string
   createdBy?: string
   createdAt: number
@@ -89,8 +91,19 @@ export interface CalendarEvent {
 
 export type EventDraft = Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>
 
+export type ColorKey = 'blue' | 'pink' | 'green' | 'orange' | 'teal' | 'red'
+
+/** Cada uno de los dos, registrado al entrar (para los colores del calendario). */
+export interface Member {
+  name: string
+  email?: string
+  color: ColorKey
+}
+
 /** Personalización compartida de la pantalla de inicio (todo opcional). */
 export interface HomeSettings {
+  /** Miembros por uid. Cada móvil escribe solo su propia entrada. */
+  members?: Record<string, Member>
   /** Foto de los dos que encabeza Inicio. */
   photo?: PhotoRef
   message?: { text: string; author?: string; updatedAt: number }

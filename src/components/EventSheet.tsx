@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { addDays, daysBetween } from '../lib/calendar'
 import { useData } from '../lib/data'
+import { BOTH, usePeople } from '../lib/people'
 import { getPrefs } from '../lib/prefs'
 import type { CalendarEvent, EventDraft, Repeat } from '../lib/types'
 import { Segmented } from './Segmented'
@@ -34,6 +35,8 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
   const [start, setStart] = useState('20:00')
   const [end, setEnd] = useState('')
   const [repeat, setRepeat] = useState<RepeatOption>('none')
+  const [who, setWho] = useState<string>(BOTH)
+  const { options } = usePeople()
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +50,7 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
     setStart(event?.start ?? '20:00')
     setEnd(event?.end ?? '')
     setRepeat(event?.repeat ?? 'none')
+    setWho(event?.who ?? BOTH)
     setNotes(event?.notes ?? '')
     setError(null)
   }, [open, event, defaultDate])
@@ -64,6 +68,7 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
       start: allDay ? undefined : start,
       end: allDay || !end ? undefined : end,
       repeat: repeat === 'none' ? undefined : repeat,
+      who: who === BOTH ? undefined : who,
       notes: notes.trim() || undefined,
       createdBy: event?.createdBy ?? (getPrefs().name || undefined),
     }
@@ -182,6 +187,24 @@ export function EventSheet({ open, onClose, event, defaultDate }: Props) {
               </div>
             </>
           )}
+        </div>
+
+        <div className="section-label">¿De quién?</div>
+        <div className="who-picker" role="radiogroup">
+          {options.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={who === p.id}
+              className={`who-chip ${who === p.id ? 'is-selected' : ''}`}
+              style={{ ['--who' as string]: p.color }}
+              onClick={() => setWho(p.id)}
+            >
+              <i />
+              {p.name}
+            </button>
+          ))}
         </div>
 
         <div className="section-label">Repetir</div>

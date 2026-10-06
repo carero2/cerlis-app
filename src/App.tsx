@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { TabBar } from './components/TabBar'
 import { useAuth } from './lib/auth'
 import { DataProvider, useData } from './lib/data'
+import { useRegisterMember } from './lib/people'
 import { usePrefs } from './lib/prefs'
 import { routeTab, useRoute } from './lib/router'
 import { Calendar } from './screens/Calendar'
@@ -51,6 +52,7 @@ export function Shell() {
 function Main() {
   const route = useRoute()
   const { items, ready, sync } = useData()
+  useRegisterMember()
   const pending = items.filter((i) => !i.checked).length
   const hideTabs = route.name === 'recipe-new' || route.name === 'recipe-edit'
 

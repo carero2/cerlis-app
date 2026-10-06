@@ -8,6 +8,7 @@ import { fromKey, relativeDay, timeLabel, upcoming } from '../lib/calendar'
 import { CATEGORY_BY_ID } from '../lib/categories'
 import { countdownDateFmt, remaining, useNow } from '../lib/countdown'
 import { useData } from '../lib/data'
+import { usePeople } from '../lib/people'
 import { usePhoto } from '../lib/photos'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { formatTime, recipeTint } from '../lib/recipes'
@@ -238,6 +239,7 @@ function Unit({ value, label }: { value: number; label: string }) {
 /** Próximos planes del calendario (solo si hay alguno en las próximas semanas). */
 function AgendaBlock({ events }: { events: CalendarEvent[] }) {
   const next = useMemo(() => upcoming(events, 3, 30), [events])
+  const { colorOf } = usePeople()
   if (!next.length) return null
   return (
     <section className="home-block home-agenda">
@@ -249,7 +251,12 @@ function AgendaBlock({ events }: { events: CalendarEvent[] }) {
       </div>
       <div className="card agenda-card">
         {next.map((o) => (
-          <button key={o.event.id + o.date} className="agenda-row" onClick={() => switchTab(paths.calendarDay(o.date))}>
+          <button
+            key={o.event.id + o.date}
+            className="agenda-row"
+            style={{ ['--ev' as string]: colorOf(o.event.who) }}
+            onClick={() => switchTab(paths.calendarDay(o.date))}
+          >
             <span className="agenda-date">
               <span className="agenda-num">{fromKey(o.date).getDate()}</span>
               <span className="agenda-dow">{weekdayFmt.format(fromKey(o.date))}</span>

@@ -8,8 +8,9 @@ import { SyncBadge } from '../components/SyncBadge'
 import { useToast } from '../components/Toast'
 import { useAuth, useUser } from '../lib/auth'
 import { useData } from '../lib/data'
+import { COLORS, COLOR_NAMES, setMyColor, useMyId } from '../lib/people'
 import { setPrefs, usePrefs, type ThemePref } from '../lib/prefs'
-import type { Recipe } from '../lib/types'
+import type { ColorKey, Recipe } from '../lib/types'
 
 const isStandalone =
   window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
@@ -121,6 +122,7 @@ export function Settings() {
             onChange={(e) => setPrefs({ groupByCategory: e.target.checked })}
           />
         </label>
+        <MyColorRow />
         <button className="settings-row is-button" onClick={() => setSheet('backup')}>
           <RowIcon icon="download" tint="gray" />
           <span className="row-label">Copia de seguridad</span>
@@ -202,5 +204,46 @@ function RowIcon({ icon, tint }: { icon: IconName; tint: Tint }): ReactNode {
     <span className={`row-icon tint-${tint}-solid`}>
       <Icon name={icon} size={18} />
     </span>
+  )
+}
+
+/** Color con el que salen mis planes en el calendario. */
+function MyColorRow() {
+  const { home, store } = useData()
+  const { name } = usePrefs()
+  const toast = useToast()
+  const me = useMyId()
+  const mine = home.members?.[me]
+  const taken = new Set(
+    Object.entries(home.members ?? {})
+      .filter(([id]) => id !== me)
+      .map(([, m]) => m.color),
+  )
+  return (
+    <div className="settings-row color-row">
+      <RowIcon icon="calendar" tint="purple" />
+      <span className="row-label">
+        Tu color en el calendario
+        <span className="muted small block">El punto blanco es el de tu pareja</span>
+      </span>
+      <div className="color-swatches" role="radiogroup" aria-label="Tu color en el calendario">
+        {(Object.keys(COLORS) as ColorKey[]).map((c) => (
+          <button
+            key={c}
+            role="radio"
+            aria-checked={mine?.color === c}
+            aria-label={COLOR_NAMES[c] + (taken.has(c) ? ' (lo usa tu pareja)' : '')}
+            className={`swatch ${mine?.color === c ? 'is-selected' : ''} ${taken.has(c) ? 'is-taken' : ''}`}
+            style={{ background: COLORS[c] }}
+            onClick={() =>
+              void setMyColor(store, me, mine, name || 'Yo', c).catch((e) => {
+                console.error(e)
+                toast('No se ha podido guardar el color')
+              })
+            }
+          />
+        ))}
+      </div>
+    </div>
   )
 }

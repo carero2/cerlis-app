@@ -148,7 +148,8 @@ export function createLocalStore(): DataStore {
       return () => homeListeners.delete(cb)
     },
     async updateHome(patch) {
-      home = JSON.parse(JSON.stringify({ ...home, ...patch })) as HomeSettings
+      const members = patch.members ? { ...home.members, ...patch.members } : home.members
+      home = JSON.parse(JSON.stringify({ ...home, ...patch, members })) as HomeSettings
       localStorage.setItem(HOME_KEY, JSON.stringify(home))
       homeListeners.forEach((cb) => cb(home))
     },

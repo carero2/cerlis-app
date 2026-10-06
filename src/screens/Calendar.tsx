@@ -18,6 +18,7 @@ import {
   type Occurrence,
 } from '../lib/calendar'
 import { useData } from '../lib/data'
+import { BOTH, usePeople } from '../lib/people'
 import { usePrefs } from '../lib/prefs'
 import type { CalendarEvent } from '../lib/types'
 
@@ -40,13 +41,16 @@ export function Calendar({ initialDate }: { initialDate?: string }) {
     [events, selected],
   )
   const next = useMemo(() => upcoming(events, 8), [events])
+  const { options, colorOf } = usePeople()
 
-  // Cuántos planes tiene cada día visible (para los puntitos).
-  const counts = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const day of grid) map.set(day, onDay(monthOccs, day).length)
+  // Color de cada plan de cada día visible (para los puntitos).
+  const dots = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const day of grid) map.set(day, onDay(monthOccs, day).map((o) => colorOf(o.event.who)))
     return map
-  }, [grid, monthOccs])
+  }, [grid, monthOccs, colorOf])
+  // Solo se muestra la leyenda cuando hay más de un color en juego.
+  const showLegend = options.length > 1 && events.some((e) => e.who && e.who !== BOTH)
 
   const shiftMonth = (delta: number) =>
     setView((v) => {
@@ -115,7 +119,8 @@ export function Calendar({ initialDate }: { initialDate?: string }) {
         <div className="cal-grid" onPointerDown={onPointerDown} onPointerUp={onPointerUp} style={{ touchAction: 'pan-y' }}>
           {grid.map((day) => {
             const d = fromKey(day)
-            const count = counts.get(day) ?? 0
+            const colors = dots.get(day) ?? []
+            const count = colors.length
             const outside = d.getMonth() !== view.month
             return (
               <button
@@ -127,14 +132,24 @@ export function Calendar({ initialDate }: { initialDate?: string }) {
               >
                 <span className="cal-num">{d.getDate()}</span>
                 <span className="cal-dots">
-                  {Array.from({ length: Math.min(count, 3) }, (_, i) => (
-                    <i key={i} />
+                  {colors.slice(0, 3).map((c, i) => (
+                    <i key={i} style={{ background: c }} />
                   ))}
                 </span>
               </button>
             )
           })}
         </div>
+        {showLegend && (
+          <div className="cal-legend">
+            {options.map((p) => (
+              <span key={p.id}>
+                <i style={{ background: p.color }} />
+                {p.name}
+              </span>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="cal-section">
@@ -165,7 +180,12 @@ export function Calendar({ initialDate }: { initialDate?: string }) {
           </div>
           <div className="card upcoming-list">
             {next.map((o) => (
-              <button key={o.event.id + o.date} className="upcoming-row" onClick={() => pick(o.date < today ? today : o.date)}>
+              <button
+                key={o.event.id + o.date}
+                className="upcoming-row"
+                style={{ ['--ev' as string]: colorOf(o.event.who) }}
+                onClick={() => pick(o.date < today ? today : o.date)}
+              >
                 <span className="upcoming-day">
                   <span className="upcoming-num">{fromKey(o.date).getDate()}</span>
                   <span className="upcoming-month">{shortRange.format(fromKey(o.date)).split(' ')[1]}</span>
@@ -190,10 +210,11 @@ export function Calendar({ initialDate }: { initialDate?: string }) {
 
 export function EventCard({ occ, onClick }: { occ: Occurrence; onClick: () => void }) {
   const { name: me } = usePrefs()
+  const { colorOf, labelOf } = usePeople()
   const e = occ.event
   const multi = occ.endDate !== occ.date
   return (
-    <button className="event-card" onClick={onClick}>
+    <button className="event-card" onClick={onClick} style={{ ['--ev' as string]: colorOf(e.who) }}>
       <span className="event-time">
         {e.allDay ? (
           <span className="event-allday">Todo el día</span>
@@ -205,7 +226,10 @@ export function EventCard({ occ, onClick }: { occ: Occurrence; onClick: () => vo
         )}
       </span>
       <span className="event-body">
-        <strong>{e.title}</strong>
+        <span className="event-title-row">
+          <strong>{e.title}</strong>
+          <span className="who-tag">{labelOf(e.who)}</span>
+        </span>
         {(multi || e.repeat) && (
           <span className="event-meta">
             {multi && `${shortRange.format(fromKey(occ.date))} – ${shortRange.format(fromKey(occ.endDate))}`}
