@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useToast } from '../components/Toast'
 import { guessCategory, normalize, parseItemInput } from './categories'
 import { useData } from './data'
+import { savePendingPhoto, type PendingPhoto } from './photos'
 import { getPrefs } from './prefs'
 import type { ShoppingItem } from './types'
 
@@ -56,20 +57,22 @@ export function useShoppingActions() {
   const toast = useToast()
 
   const add = useCallback(
-    async (raw: string, extra: Partial<ShoppingItem> = {}) => {
+    async (raw: string, pendingPhoto?: PendingPhoto) => {
       const { name, quantity } = parseItemInput(raw)
       if (!name) return
       const key = normalize(name)
       const existing = items.find((it) => normalize(it.name) === key)
       remember([name])
+      const photo = pendingPhoto ? await savePendingPhoto(store, pendingPhoto) : undefined
       if (existing) {
+        const withPhoto = photo ? { photo } : {}
         // Si ya estaba en el carrito lo devolvemos a pendientes en vez de duplicar.
         if (existing.checked) {
-          await store.updateItem(existing.id, { checked: false, checkedAt: undefined, quantity: quantity ?? existing.quantity })
+          await store.updateItem(existing.id, { checked: false, checkedAt: undefined, quantity: quantity ?? existing.quantity, ...withPhoto })
           toast(`${existing.name} vuelve a la lista`)
-        } else if (quantity && quantity !== existing.quantity) {
-          await store.updateItem(existing.id, { quantity })
-          toast(`Cantidad de ${existing.name} actualizada`)
+        } else if ((quantity && quantity !== existing.quantity) || photo) {
+          await store.updateItem(existing.id, { quantity: quantity ?? existing.quantity, ...withPhoto })
+          toast(`${existing.name} actualizado`)
         } else {
           toast(`${existing.name} ya está en la lista`)
         }
@@ -79,9 +82,9 @@ export function useShoppingActions() {
         {
           name,
           quantity,
+          photo,
           category: guessCategory(name),
           addedBy: getPrefs().name || undefined,
-          ...extra,
         },
       ])
     },

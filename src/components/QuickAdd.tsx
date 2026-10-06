@@ -1,12 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
+import type { PendingPhoto } from '../lib/photos'
 import { CATEGORY_BY_ID, guessCategory, normalize, parseItemInput } from '../lib/categories'
 import { useData } from '../lib/data'
 import { suggestFromHistory, useShoppingActions } from '../lib/shopping'
 import { Icon } from './Icon'
+import { PhotoInput } from './Photo'
 
 export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?: boolean }) {
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
+  const [photo, setPhoto] = useState<PendingPhoto | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const { items } = useData()
   const { add } = useShoppingActions()
@@ -25,9 +28,11 @@ export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?
 
   const submit = async (value = text) => {
     if (!value.trim()) return
+    const withPhoto = photo ?? undefined
     setText('')
+    setPhoto(null)
     input.current?.focus()
-    await add(value)
+    await add(value, withPhoto)
   }
 
   return (
@@ -39,7 +44,16 @@ export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?
           void submit()
         }}
       >
-        <span className="quick-add-icon">{category ? category.emoji : <Icon name="plus" size={20} />}</span>
+        {photo ? (
+          <button type="button" className="quick-add-photo" onClick={() => setPhoto(null)} aria-label="Quitar foto">
+            <img src={photo.thumb} alt="" />
+            <span>
+              <Icon name="x" size={10} strokeWidth={3} />
+            </span>
+          </button>
+        ) : (
+          <span className="quick-add-icon">{category ? category.emoji : <Icon name="plus" size={20} />}</span>
+        )}
         <input
           ref={input}
           value={text}
@@ -47,7 +61,7 @@ export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?
           onFocus={() => setFocused(true)}
           // Retraso para que un toque en una sugerencia llegue antes de ocultarlas.
           onBlur={() => window.setTimeout(() => setFocused(false), 150)}
-          placeholder="Añadir producto…"
+          placeholder={photo ? '¿Qué es? Escribe el nombre' : 'Añadir producto…'}
           enterKeyHint="done"
           autoComplete="off"
           autoCorrect="on"
@@ -56,9 +70,23 @@ export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?
           aria-label="Añadir producto"
         />
         {parsed?.quantity && <span className="qty-pill">{parsed.quantity}</span>}
-        <button type="submit" className="quick-add-submit" disabled={!text.trim()} aria-label="Añadir">
-          <Icon name="plus" size={20} />
-        </button>
+        {!compact && !photo && (
+          <PhotoInput
+            className="quick-add-camera"
+            label="Añadir con foto"
+            onPhoto={(p) => {
+              setPhoto(p)
+              input.current?.focus()
+            }}
+          >
+            <Icon name="camera" size={21} />
+          </PhotoInput>
+        )}
+        {text.trim() && (
+          <button type="submit" className="quick-add-submit" aria-label="Añadir">
+            <Icon name="plus" size={20} />
+          </button>
+        )}
       </form>
       {suggestions.length > 0 && (
         <div className="suggestions" role="list">

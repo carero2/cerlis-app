@@ -28,6 +28,15 @@ service cloud.firestore {
       allow read, write: if allowed();
     }
 
+    // Fotos grandes (las miniaturas van dentro de cada producto o receta).
+    // Firestore admite como máximo ~1 MB por documento.
+    match /photos/{photoId} {
+      allow read, delete: if allowed();
+      allow create, update: if allowed()
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+    }
+
     // Todo lo demás queda cerrado.
   }
 }

@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Icon, type IconName } from '../components/Icon'
 import { Page } from '../components/Page'
-import { ConfirmSheet } from '../components/Sheet'
+import { ConfirmSheet, Sheet } from '../components/Sheet'
 import { SyncBadge } from '../components/SyncBadge'
 import { useToast } from '../components/Toast'
 import { useAuth, useUser } from '../lib/auth'
@@ -18,10 +18,11 @@ export function Settings() {
   const toast = useToast()
   const user = useUser()
   const { signOut } = useAuth()
-  const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [sheet, setSheet] = useState<'backup' | 'signout' | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const exportData = () => {
+    // Las fotos grandes no van en la copia (solo las miniaturas) para que el archivo sea ligero.
     const blob = new Blob([JSON.stringify({ app: 'cerlis', version: 1, exportedAt: new Date().toISOString(), recipes, items }, null, 2)], {
       type: 'application/json',
     })
@@ -31,6 +32,7 @@ export function Settings() {
     a.download = `cerlis-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
+    setSheet(null)
   }
 
   const importData = async (file: File) => {
@@ -39,7 +41,7 @@ export function Settings() {
       const incoming = data.recipes ?? []
       const existing = new Set(recipes.map((r) => r.title.toLowerCase()))
       const fresh = incoming.filter((r) => r.title && !existing.has(r.title.toLowerCase()))
-      for (const { id: _id, createdAt: _c, updatedAt: _u, ...rest } of fresh) {
+      for (const { id: _id, createdAt: _c, updatedAt: _u, photo: _p, ...rest } of fresh) {
         await store.createRecipe({ ...rest, tags: rest.tags ?? [], ingredients: rest.ingredients ?? [], steps: rest.steps ?? [] })
       }
       toast(fresh.length ? `${fresh.length} receta${fresh.length === 1 ? '' : 's'} importada${fresh.length === 1 ? '' : 's'}` : 'No había recetas nuevas')
@@ -51,82 +53,30 @@ export function Settings() {
 
   return (
     <Page title="Ajustes" className="theme-settings">
-      <div className="profile-card card">
+      <section className="profile">
         {user?.photoURL ? (
-          <img className="avatar" src={user.photoURL} alt="" referrerPolicy="no-referrer" />
+          <img className="profile-avatar" src={user.photoURL} alt="" referrerPolicy="no-referrer" />
         ) : (
-          <div className="avatar">{(prefs.name || '?').charAt(0).toUpperCase()}</div>
+          <div className="profile-avatar">{(prefs.name || '?').charAt(0).toUpperCase()}</div>
         )}
-        <label className="profile-name">
-          <span className="muted small">Tu nombre</span>
+        <label className="profile-name-input">
           <input
             value={prefs.name}
             onChange={(e) => setPrefs({ name: e.target.value })}
             onBlur={(e) => setPrefs({ name: e.target.value.trim() })}
-            placeholder="Escribe tu nombre"
+            placeholder="Tu nombre"
             autoComplete="given-name"
+            aria-label="Tu nombre"
           />
+          <Icon name="edit" size={15} />
         </label>
-      </div>
-      <p className="group-footer">Aparece en lo que añades, para saber quién lo pidió.</p>
+        <p className="muted small">{user ? user.email : 'Modo local · solo en este dispositivo'}</p>
+        {user && <SyncBadge state={sync} />}
+      </section>
 
-      <Group title={user ? 'Cuenta' : 'Sincronización'}>
-        {user ? (
-          <>
-            <div className="settings-row">
-              <span className="row-icon tint-blue-solid">
-                <Icon name="user" size={18} />
-              </span>
-              <span className="row-label">
-                Google
-                <span className="muted small block">{user.email}</span>
-              </span>
-            </div>
-            <div className="settings-row">
-              <span className="row-icon tint-gray-solid">
-                <Icon name={sync === 'offline' || sync === 'error' ? 'cloudOff' : 'cloud'} size={18} />
-              </span>
-              <span className="row-label">Estado</span>
-              <SyncBadge state={sync} />
-            </div>
-          </>
-        ) : (
-          <div className="settings-note">
-            <div className="settings-note-icon">📱</div>
-            <div>
-              <strong>Modo local</strong>
-              <p className="muted small">
-                Los datos se guardan solo en este dispositivo. Para compartirlos con tu pareja en tiempo real, configura
-                Firebase (ver README del proyecto).
-              </p>
-            </div>
-          </div>
-        )}
-      </Group>
-      {user && (
-        <div className="group-actions">
-          <span />
-          <button className="link-btn link-danger" onClick={() => setConfirmSignOut(true)}>
-            Cerrar sesión
-          </button>
-        </div>
-      )}
-
-      <Group title="Lista de la compra">
-        <ToggleRow
-          icon="layers"
-          tint="green"
-          label="Agrupar por pasillos"
-          checked={prefs.groupByCategory}
-          onChange={(v) => setPrefs({ groupByCategory: v })}
-        />
-      </Group>
-
-      <Group title="Apariencia">
+      <div className="card settings-card">
         <div className="settings-row">
-          <span className="row-icon tint-purple-solid">
-            <Icon name="palette" size={18} />
-          </span>
+          <RowIcon icon="palette" tint="purple" />
           <span className="row-label">Tema</span>
           <Segmented<ThemePref>
             value={prefs.theme}
@@ -138,55 +88,43 @@ export function Settings() {
             ]}
           />
         </div>
-      </Group>
-
-      <Group title="Asistente">
-        <div className="settings-row is-disabled">
-          <span className="row-icon tint-ai">
-            <Icon name="sparkles" size={18} />
-          </span>
+        <label className="settings-row is-button">
+          <RowIcon icon="layers" tint="green" />
           <span className="row-label">
-            Importar recetas con IA
-            <span className="muted small block">Con tu cuenta de Google, sin guardar credenciales</span>
+            Agrupar la compra por pasillos
           </span>
-          <span className="badge">Pronto</span>
-        </div>
-      </Group>
+          <input
+            type="checkbox"
+            className="ios-switch"
+            checked={prefs.groupByCategory}
+            onChange={(e) => setPrefs({ groupByCategory: e.target.checked })}
+          />
+        </label>
+        <button className="settings-row is-button" onClick={() => setSheet('backup')}>
+          <RowIcon icon="download" tint="gray" />
+          <span className="row-label">Copia de seguridad</span>
+          <Icon name="chevron" size={16} className="row-chevron" />
+        </button>
+      </div>
 
       {!isStandalone && (
-        <Group title="Instalar en el iPhone">
-          <ol className="install-steps">
-            <li>
-              Abre esta página en <strong>Safari</strong>.
-            </li>
-            <li>
-              Toca <span className="kbd"><Icon name="share" size={14} /></span> <strong>Compartir</strong>.
-            </li>
-            <li>
-              Elige <strong>Añadir a pantalla de inicio</strong>.
-            </li>
-          </ol>
-        </Group>
+        <div className="card install-card">
+          <Icon name="phone" size={22} />
+          <p>
+            Para usarla como app: en Safari toca <span className="kbd"><Icon name="share" size={14} /></span> y{' '}
+            <strong>Añadir a pantalla de inicio</strong>.
+          </p>
+        </div>
       )}
 
-      <Group title="Datos">
-        <Row icon="download" tint="gray" label="Exportar copia de seguridad" onClick={exportData} />
-        <Row icon="book" tint="orange" label="Importar recetas" onClick={() => fileInput.current?.click()} />
-      </Group>
-      <input
-        ref={fileInput}
-        type="file"
-        accept="application/json,.json"
-        hidden
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) void importData(f)
-          e.target.value = ''
-        }}
-      />
+      {user && (
+        <button className="card signout-btn" onClick={() => setSheet('signout')}>
+          Cerrar sesión
+        </button>
+      )}
 
       <p className="about">
-        <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={40} height={40} />
+        <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={36} height={36} />
         <span>
           Cerlis · v{__APP_VERSION__}
           <br />
@@ -194,53 +132,52 @@ export function Settings() {
         </span>
       </p>
 
+      <Sheet open={sheet === 'backup'} onClose={() => setSheet(null)} title="Copia de seguridad" tone="blue">
+        <p className="muted small sheet-intro">
+          Descarga vuestras recetas y la lista en un archivo, o recupera recetas de una copia anterior.
+        </p>
+        <div className="backup-actions">
+          <button className="btn btn-primary btn-block" onClick={exportData}>
+            <Icon name="download" size={18} /> Descargar copia
+          </button>
+          <button className="btn btn-soft btn-block" onClick={() => fileInput.current?.click()}>
+            <Icon name="book" size={18} /> Importar recetas
+          </button>
+        </div>
+      </Sheet>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) void importData(f).then(() => setSheet(null))
+          e.target.value = ''
+        }}
+      />
+
       <ConfirmSheet
-        open={confirmSignOut}
+        open={sheet === 'signout'}
         title="¿Cerrar sesión?"
         message="Tendrás que volver a entrar con Google para ver la lista y las recetas."
         confirmLabel="Cerrar sesión"
         destructive
         tone="blue"
         onConfirm={() => void signOut()}
-        onClose={() => setConfirmSignOut(false)}
+        onClose={() => setSheet(null)}
       />
     </Page>
   )
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="settings-group">
-      <h2 className="group-title">{title}</h2>
-      <div className="card settings-card">{children}</div>
-    </section>
-  )
-}
-
 type Tint = 'green' | 'gray' | 'orange' | 'blue' | 'purple'
 
-function Row({ icon, tint, label, value, onClick }: { icon: IconName; tint: Tint; label: string; value?: string; onClick: () => void }) {
+function RowIcon({ icon, tint }: { icon: IconName; tint: Tint }): ReactNode {
   return (
-    <button className="settings-row is-button" onClick={onClick}>
-      <span className={`row-icon tint-${tint}-solid`}>
-        <Icon name={icon} size={18} />
-      </span>
-      <span className="row-label">{label}</span>
-      {value && <span className="row-value">{value}</span>}
-      <Icon name="chevron" size={16} className="row-chevron" />
-    </button>
-  )
-}
-
-function ToggleRow({ icon, tint, label, checked, onChange }: { icon: IconName; tint: Tint; label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="settings-row is-button">
-      <span className={`row-icon tint-${tint}-solid`}>
-        <Icon name={icon} size={18} />
-      </span>
-      <span className="row-label">{label}</span>
-      <input type="checkbox" className="ios-switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-    </label>
+    <span className={`row-icon tint-${tint}-solid`}>
+      <Icon name={icon} size={18} />
+    </span>
   )
 }
 

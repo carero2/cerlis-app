@@ -21,6 +21,11 @@ export interface DataStore {
   updateRecipe(id: string, patch: Partial<RecipeDraft>): Promise<void>
   deleteRecipe(id: string): Promise<void>
 
+  /** Guarda una foto grande (data URL) y devuelve su id. */
+  savePhoto(dataUrl: string): Promise<string>
+  getPhoto(id: string): Promise<string | null>
+  deletePhoto(id: string): Promise<void>
+
   subscribeSync(cb: (state: SyncState) => void): Unsubscribe
   dispose(): void
 }

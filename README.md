@@ -93,16 +93,50 @@ firestore.rules     Reglas de seguridad
 ### Modelo de datos
 
 ```
-items/*    { name, quantity?, category, checked, addedBy?, recipeId?, createdAt, checkedAt? }
-recipes/*  { title, emoji, ingredients: string[], steps: string[],
+items/*    { name, quantity?, category, checked, addedBy?, recipeId?, photo?, createdAt, checkedAt? }
+recipes/*  { title, emoji, ingredients: string[], steps: string[], photo?,
              servings?, time?, tags[], notes?, source?, favorite, … }
+photos/*   { data: "data:image/jpeg;base64,…", createdAt }
+
+photo = { id, thumb }   // id de photos/* + miniatura JPEG de ~360 px
 ```
 
-## Próximo paso: recetas con IA
+## Recetas con IA
 
-Con la misma sesión de Google y el mismo proyecto de Firebase se puede usar
-Gemini a través de **Firebase AI Logic** (Gemini Developer API, con capa
-gratuita en el plan Spark), sin claves guardadas en la app ni en el
-repositorio. La IA convertirá un enlace, texto o foto en una receta con
-**exactamente** el formato `Recipe` de [`src/lib/types.ts`](src/lib/types.ts):
-`ingredients: string[]` y `steps: string[]`.
+En **Recetas → Crear con IA** (o el botón ✨ de Inicio) se describe lo que se
+quiere —“una lasaña”, una lista de ingredientes, “algo con algunos de estos…”
+o una receta pegada— y Gemini rellena el formulario (título, raciones, tiempo,
+ingredientes, pasos, etiquetas y notas). Antes de guardar se puede revisar,
+deshacer o pedir cambios (“hazla vegetariana”, “para 4”).
+
+Funciona con **Firebase AI Logic** y la **Gemini Developer API** en el plan
+gratuito Spark, sin claves en la app. Para activarlo:
+
+1. Consola de Firebase → **AI Logic** (menú Compilación / Build) →
+   **Comenzar** → elige **Gemini Developer API** y confirma.
+2. Listo: la app usa la misma sesión de Google y el mismo proyecto.
+
+Los modelos se prueban en orden (ver `MODELS` en
+[`src/lib/ai.ts`](src/lib/ai.ts)); si uno no existe o se queda sin cuota se
+pasa al siguiente. Se puede forzar uno con `VITE_GEMINI_MODEL`.
+
+**Limitaciones**
+
+- La capa gratuita tiene un número limitado de peticiones por minuto y por
+  día (Google lo cambia de vez en cuando). Para dos personas sobra, pero si se
+  agota la app avisa y hay que esperar.
+- En la capa gratuita, Google puede usar las peticiones para mejorar sus
+  productos: no escribas datos personales en las descripciones.
+- La IA puede equivocarse con cantidades o tiempos: revisa antes de guardar.
+- Necesita conexión a internet.
+
+## Fotos
+
+Recetas y productos de la lista pueden tener foto (cámara o fototeca). Como
+**Cloud Storage ya no está en el plan gratuito**, las fotos se comprimen en el
+móvil y se guardan en Firestore: una miniatura dentro del producto o receta y
+la imagen grande (≈1280 px, < 1 MB) en la colección `photos`, que solo se
+descarga al abrirla. Con 1 GB gratis de Firestore caben varios miles de fotos.
+
+> Al añadir fotos hay que **volver a publicar las reglas** de
+> [`firestore.rules`](firestore.rules) (incluyen la colección `photos`).

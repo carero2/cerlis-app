@@ -1,18 +1,24 @@
 import { useMemo, useState } from 'react'
+import { AiComposer } from '../components/AiComposer'
 import { Icon } from '../components/Icon'
+import { PhotoInput } from '../components/Photo'
 import { LinesEditor } from '../components/LinesEditor'
 import { Page } from '../components/Page'
 import { ConfirmSheet, Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
+import { useUser } from '../lib/auth'
 import { useData } from '../lib/data'
+import { savePendingPhoto, usePhoto, type PendingPhoto } from '../lib/photos'
 import { getPrefs } from '../lib/prefs'
 import { FOOD_EMOJIS, SUGGESTED_TAGS, emptyDraft, recipeTint } from '../lib/recipes'
 import { goBack, navigate, paths } from '../lib/router'
 import type { RecipeDraft } from '../lib/types'
 
-export function RecipeEditor({ id }: { id?: string }) {
+export function RecipeEditor({ id, aiFocus }: { id?: string; aiFocus?: boolean }) {
   const { recipes, store } = useData()
   const toast = useToast()
+  // La IA va a través de Firebase: solo disponible con sesión iniciada.
+  const aiAvailable = !!useUser()
   const existing = id ? recipes.find((r) => r.id === id) : undefined
 
   const initial = useMemo<RecipeDraft>(() => {
@@ -27,9 +33,12 @@ export function RecipeEditor({ id }: { id?: string }) {
   const [confirm, setConfirm] = useState<'discard' | 'delete' | null>(null)
   const [newTag, setNewTag] = useState('')
   const [saving, setSaving] = useState(false)
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null)
+  const storedPhoto = usePhoto(draft.photo)
+  const photoSrc = pendingPhoto?.full ?? storedPhoto
 
   const set = <K extends keyof RecipeDraft>(key: K, value: RecipeDraft[K]) => setDraft((d) => ({ ...d, [key]: value }))
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial)
+  const dirty = !!pendingPhoto || JSON.stringify(draft) !== JSON.stringify(initial)
   const canSave = draft.title.trim().length > 0 && !saving
 
   const allTags = useMemo(() => {
@@ -41,6 +50,16 @@ export function RecipeEditor({ id }: { id?: string }) {
     set('tags', draft.tags.includes(t) ? draft.tags.filter((x) => x !== t) : [...draft.tags, t])
 
   const cancel = () => (dirty ? setConfirm('discard') : goBack(id ? paths.recipe(id) : paths.recipes))
+
+  const applyAi = (result: Partial<RecipeDraft>) => {
+    const previous = draft
+    const defined = Object.fromEntries(Object.entries(result).filter(([, v]) => v !== undefined))
+    setDraft((d) => ({ ...d, ...defined }))
+    toast('Receta rellenada ✨ Revísala y guarda', {
+      action: { label: 'Deshacer', onClick: () => setDraft(previous) },
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const save = async () => {
     if (!canSave) return
@@ -54,6 +73,9 @@ export function RecipeEditor({ id }: { id?: string }) {
       source: draft.source?.trim() || undefined,
     }
     try {
+      if (pendingPhoto) clean.photo = await savePendingPhoto(store, pendingPhoto)
+      // La foto anterior ya no se usa: la borramos para no ocupar espacio.
+      if (initial.photo && initial.photo.id !== clean.photo?.id) void store.deletePhoto(initial.photo.id).catch(console.error)
       if (existing) {
         await store.updateRecipe(existing.id, clean)
         toast('Receta guardada')
@@ -101,23 +123,53 @@ export function RecipeEditor({ id }: { id?: string }) {
         </button>
       }
     >
+      {aiAvailable && <AiComposer draft={draft} onResult={applyAi} autoFocus={aiFocus} />}
+
+      {photoSrc ? (
+        <div className="editor-photo">
+          <img src={photoSrc} alt="" />
+          <div className="editor-photo-actions">
+            <PhotoInput className="btn btn-small btn-glass" onPhoto={setPendingPhoto} label="Cambiar foto">
+              <Icon name="camera" size={16} /> Cambiar
+            </PhotoInput>
+            <button
+              className="btn btn-small btn-glass"
+              onClick={() => {
+                setPendingPhoto(null)
+                set('photo', undefined)
+              }}
+            >
+              <Icon name="trash" size={16} /> Quitar
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="editor-head">
-        <button className={`emoji-picker-btn ${recipeTint({ id: id ?? '', title: draft.title })}`} onClick={() => setEmojiOpen(true)} aria-label="Cambiar icono">
-          <span>{draft.emoji}</span>
-          <span className="emoji-edit">
-            <Icon name="edit" size={12} />
-          </span>
-        </button>
+        {!photoSrc && (
+          <button className={`emoji-picker-btn ${recipeTint({ id: id ?? '', title: draft.title })}`} onClick={() => setEmojiOpen(true)} aria-label="Cambiar icono">
+            <span>{draft.emoji}</span>
+            <span className="emoji-edit">
+              <Icon name="edit" size={12} />
+            </span>
+          </button>
+        )}
         <textarea
           className="title-input"
           rows={1}
           value={draft.title}
           onChange={(e) => set('title', e.target.value.replace(/\n/g, ''))}
           placeholder="Nombre de la receta"
-          autoFocus={!existing}
+          autoFocus={!existing && !aiAvailable}
           aria-label="Nombre de la receta"
         />
       </div>
+      {!photoSrc && (
+        <PhotoInput className="photo-add" onPhoto={setPendingPhoto}>
+          <Icon name="camera" size={20} />
+          <span>Añadir foto del plato</span>
+        </PhotoInput>
+      )}
 
       <div className="card field-group">
         <label className="field field-inline">

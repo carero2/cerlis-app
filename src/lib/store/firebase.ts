@@ -13,6 +13,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDoc,
   initializeFirestore,
   onSnapshot,
   persistentLocalCache,
@@ -47,6 +48,11 @@ function init(config: FirebaseConfig) {
     })
   }
   return { app: app!, db: db! }
+}
+
+/** App de Firebase ya inicializada (la usa también el módulo de IA). */
+export function firebaseApp(config: FirebaseConfig): FirebaseApp {
+  return init(config).app
 }
 
 // ---------- Autenticación ----------
@@ -90,6 +96,7 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const { db } = init(config)
   const itemsCol = collection(db, 'items')
   const recipesCol = collection(db, 'recipes')
+  const photosCol = collection(db, 'photos')
 
   const syncListeners = new Set<(s: SyncState) => void>()
   let sync: SyncState = navigator.onLine ? 'connecting' : 'offline'
@@ -167,6 +174,19 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
     },
     async deleteRecipe(id) {
       await deleteDoc(doc(recipesCol, id))
+    },
+
+    async savePhoto(dataUrl) {
+      const id = uid()
+      await setDoc(doc(photosCol, id), { data: dataUrl, createdAt: Date.now() })
+      return id
+    },
+    async getPhoto(id) {
+      const snap = await getDoc(doc(photosCol, id))
+      return snap.exists() ? (snap.data().data as string) : null
+    },
+    async deletePhoto(id) {
+      await deleteDoc(doc(photosCol, id))
     },
 
     subscribeSync(cb) {

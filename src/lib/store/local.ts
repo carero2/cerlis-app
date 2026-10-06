@@ -4,6 +4,7 @@ import type { DataStore } from './types'
 
 const ITEMS_KEY = 'cerlis:items'
 const RECIPES_KEY = 'cerlis:recipes'
+const PHOTO_PREFIX = 'cerlis:photo:'
 
 function read<T>(key: string): T[] {
   try {
@@ -96,6 +97,19 @@ export function createLocalStore(): DataStore {
     },
     async deleteRecipe(id) {
       saveRecipes(recipes.filter((r) => r.id !== id))
+    },
+
+    async savePhoto(dataUrl) {
+      const id = uid()
+      // Puede fallar si se llena el almacenamiento del navegador (~5 MB).
+      localStorage.setItem(PHOTO_PREFIX + id, dataUrl)
+      return id
+    },
+    async getPhoto(id) {
+      return localStorage.getItem(PHOTO_PREFIX + id)
+    },
+    async deletePhoto(id) {
+      localStorage.removeItem(PHOTO_PREFIX + id)
     },
 
     subscribeSync(cb) {

@@ -10,7 +10,7 @@ export type Route =
   | { name: 'list' }
   | { name: 'recipes' }
   | { name: 'recipe'; id: string }
-  | { name: 'recipe-new' }
+  | { name: 'recipe-new'; ai?: boolean }
   | { name: 'recipe-edit'; id: string }
   | { name: 'settings' }
 
@@ -22,7 +22,7 @@ function parse(hash: string): Route {
     case 'lista':
       return { name: 'list' }
     case 'recetas':
-      if (parts[1] === 'nueva') return { name: 'recipe-new' }
+      if (parts[1] === 'nueva') return { name: 'recipe-new', ai: parts[2] === 'ia' }
       if (parts[1] && parts[2] === 'editar') return { name: 'recipe-edit', id: parts[1] }
       if (parts[1]) return { name: 'recipe', id: parts[1] }
       return { name: 'recipes' }
@@ -55,6 +55,7 @@ export const paths = {
   recipes: '/recetas',
   recipe: (id: string) => `/recetas/${encodeURIComponent(id)}`,
   recipeNew: '/recetas/nueva',
+  recipeAi: '/recetas/nueva/ia',
   recipeEdit: (id: string) => `/recetas/${encodeURIComponent(id)}/editar`,
   settings: '/ajustes',
 }

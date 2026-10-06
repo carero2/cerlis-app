@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/Icon'
+import { PhotoViewer } from '../components/Photo'
 import { BackButton, NavIconButton, Page } from '../components/Page'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
 import { normalize } from '../lib/categories'
 import { useData } from '../lib/data'
+import { usePhoto } from '../lib/photos'
 import { formatTime, parseIngredient, recipeTint } from '../lib/recipes'
 import { goBack, navigate, paths } from '../lib/router'
 import { useShoppingActions } from '../lib/shopping'
@@ -34,6 +36,9 @@ function RecipeView({ recipe, onToggleFav }: { recipe: Recipe; onToggleFav: () =
   const [doneSteps, setDoneSteps] = useState<Set<number>>(new Set())
   const [shopOpen, setShopOpen] = useState(false)
   const cooking = useWakeLock()
+  const photo = usePhoto(recipe.photo)
+  const [viewer, setViewer] = useState(false)
+  const closeViewer = useCallback(() => setViewer(false), [])
   const time = formatTime(recipe.time)
 
   const toggleIn = (set: Set<number>, i: number) => {
@@ -57,9 +62,16 @@ function RecipeView({ recipe, onToggleFav }: { recipe: Recipe; onToggleFav: () =
         </>
       }
     >
-      <div className={`recipe-hero ${recipeTint(recipe)}`}>
-        <span className="recipe-hero-emoji">{recipe.emoji}</span>
+      <div className={`recipe-hero ${recipeTint(recipe)} ${photo ? 'has-photo' : ''}`}>
+        {photo ? (
+          <button className="recipe-hero-photo" onClick={() => setViewer(true)} aria-label="Ver foto">
+            <img src={photo} alt={recipe.title} />
+          </button>
+        ) : (
+          <span className="recipe-hero-emoji">{recipe.emoji}</span>
+        )}
       </div>
+      <PhotoViewer src={viewer ? photo : null} alt={recipe.title} onClose={closeViewer} />
 
       <div className="recipe-head">
         <h1>{recipe.title}</h1>

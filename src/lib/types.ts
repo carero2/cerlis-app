@@ -11,6 +11,17 @@ export type CategoryId =
   | 'higiene'
   | 'otros'
 
+/**
+ * Foto guardada en Firestore: la miniatura va dentro del documento (para
+ * listas y tarjetas) y la imagen grande en `photos/{id}`, que se carga solo
+ * al verla.
+ */
+export interface PhotoRef {
+  id: string
+  /** data URL JPEG pequeño (~360 px). */
+  thumb: string
+}
+
 export interface ShoppingItem {
   id: string
   name: string
@@ -21,6 +32,7 @@ export interface ShoppingItem {
   addedBy?: string
   /** Receta de la que procede el ingrediente, si aplica. */
   recipeId?: string
+  photo?: PhotoRef
   createdAt: number
   checkedAt?: number
 }
@@ -41,6 +53,7 @@ export interface Recipe {
   tags: string[]
   notes?: string
   favorite: boolean
+  photo?: PhotoRef
   source?: string
   createdBy?: string
   createdAt: number

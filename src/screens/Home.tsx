@@ -2,13 +2,15 @@ import { useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { Page } from '../components/Page'
 import { QuickAdd } from '../components/QuickAdd'
-import { SyncBadge } from '../components/SyncBadge'
+import { useUser } from '../lib/auth'
 import { CATEGORY_BY_ID } from '../lib/categories'
 import { useData } from '../lib/data'
+import { usePhoto } from '../lib/photos'
 import { usePrefs } from '../lib/prefs'
 import { formatTime, recipeTint } from '../lib/recipes'
 import { navigate, paths, switchTab } from '../lib/router'
-import { sortItems } from '../lib/shopping'
+import { sortItems, useShoppingActions } from '../lib/shopping'
+import type { Recipe } from '../lib/types'
 import { RecipeCard } from './Recipes'
 
 function greeting(d = new Date()) {
@@ -20,75 +22,69 @@ function greeting(d = new Date()) {
 }
 
 const dateFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+const PREVIEW = 5
 
 export function Home() {
-  const { items, recipes, sync } = useData()
+  const { items, recipes } = useData()
   const { name } = usePrefs()
+  const user = useUser()
+  const { toggle } = useShoppingActions()
   const [seed, setSeed] = useState(() => Math.random())
 
   const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
   const done = items.length - pending.length
-  const progress = items.length ? done / items.length : 0
 
-  const favorites = useMemo(
+  const latest = useMemo(
     () => [...recipes].sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt).slice(0, 8),
     [recipes],
   )
 
-  // Sugerencia del día: prioriza favoritas, y se puede volver a tirar el dado.
+  // Sugerencia del día: prioriza favoritas y se puede volver a tirar el dado.
   const suggestion = useMemo(() => {
     if (!recipes.length) return null
-    const pool = recipes.filter((r) => r.favorite).length >= 3 ? recipes.filter((r) => r.favorite) : recipes
+    const favs = recipes.filter((r) => r.favorite)
+    const pool = favs.length >= 3 ? favs : recipes
     return pool[Math.floor(seed * pool.length) % pool.length]
   }, [recipes, seed])
 
-  const today = dateFmt.format(new Date())
+  const title = name ? `${greeting()}, ${name}` : greeting()
 
   return (
-    <Page
-      title={name ? `${greeting()}, ${name}` : greeting()}
-      className="theme-home"
-      subtitle={
-        <span className="home-subtitle">
-          <span className="capitalize">{today}</span>
-          <SyncBadge state={sync} />
-        </span>
-      }
-    >
-      {/* Lista de la compra */}
-      <section className="home-card home-list">
-        <button className="home-card-head" onClick={() => switchTab(paths.list)}>
-          <ProgressRing value={progress} pending={pending.length} empty={items.length === 0} />
-          <span className="home-card-title">
-            <strong>Lista de la compra</strong>
-            <span className="muted">
-              {items.length === 0
-                ? 'Vacía por ahora'
-                : pending.length === 0
-                  ? '¡Todo comprado! 🎉'
-                  : `${pending.length} pendiente${pending.length === 1 ? '' : 's'}${done ? ` · ${done} en el carrito` : ''}`}
-            </span>
-          </span>
-          <Icon name="chevron" size={18} className="muted" />
-        </button>
-
-        {pending.length > 0 && (
-          <div className="home-preview">
-            {pending.slice(0, 6).map((i) => (
-              <span key={i.id} className="preview-chip">
-                <span>{CATEGORY_BY_ID[i.category]?.emoji}</span>
-                {i.name}
-                {i.quantity && <em>{i.quantity}</em>}
-              </span>
-            ))}
-            {pending.length > 6 && <span className="preview-chip preview-more">+{pending.length - 6}</span>}
+    <Page title="Inicio" className="theme-home home-page" hideLargeTitle overlay>
+      <header className="home-hero">
+        <div className="home-hero-top">
+          <div>
+            <p className="home-date capitalize">{dateFmt.format(new Date())}</p>
+            <h1>{title}</h1>
           </div>
-        )}
-        <QuickAdd compact />
-      </section>
+          <button className="home-avatar" onClick={() => switchTab(paths.settings)} aria-label="Ajustes">
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />
+            ) : (
+              <span>{(name || '?').charAt(0).toUpperCase()}</span>
+            )}
+          </button>
+        </div>
+        <div className="home-stats">
+          <button className="stat stat-list" onClick={() => switchTab(paths.list)}>
+            <span className="stat-icon">
+              <Icon name="cart" size={20} />
+            </span>
+            <span className="stat-value">{pending.length}</span>
+            <span className="stat-label">por comprar</span>
+          </button>
+          <button className="stat stat-recipes" onClick={() => switchTab(paths.recipes)}>
+            <span className="stat-icon">
+              <Icon name="book" size={20} />
+            </span>
+            <span className="stat-value">{recipes.length}</span>
+            <span className="stat-label">{recipes.length === 1 ? 'receta' : 'recetas'}</span>
+          </button>
+        </div>
+      </header>
 
-      {/* Qué cocinamos */}
-      <section className="home-card home-cook">
+      {/* ¿Qué cocinamos hoy? */}
+      <section className="home-block">
         <div className="home-section-head">
           <h2>¿Qué cocinamos hoy?</h2>
           {recipes.length > 1 && (
@@ -98,30 +94,78 @@ export function Home() {
           )}
         </div>
         {suggestion ? (
-          <button className="suggestion" onClick={() => navigate(paths.recipe(suggestion.id))}>
-            <span className={`suggestion-art ${recipeTint(suggestion)}`}>{suggestion.emoji}</span>
-            <span className="suggestion-text">
-              <strong>{suggestion.title}</strong>
-              <span className="muted small">
-                {[formatTime(suggestion.time), `${suggestion.ingredients.length} ingredientes`].filter(Boolean).join(' · ')}
-              </span>
-            </span>
-            <Icon name="chevron" size={18} className="muted" />
-          </button>
+          <FeaturedRecipe recipe={suggestion} />
         ) : (
-          <button className="suggestion suggestion-empty" onClick={() => navigate(paths.recipeNew)}>
-            <span className="suggestion-art tint-peach">📝</span>
-            <span className="suggestion-text">
-              <strong>Añade vuestra primera receta</strong>
-              <span className="muted small">Y aquí os propondremos qué cocinar</span>
-            </span>
-            <Icon name="plus" size={18} className="muted" />
+          <button className="ai-hero" onClick={() => navigate(user ? paths.recipeAi : paths.recipeNew)}>
+            <span className="ai-hero-emoji">🧑‍🍳</span>
+            <strong>Añadid vuestra primera receta</strong>
+            <span>{user ? 'Describe un plato y la IA la escribe por vosotros.' : 'Y aquí os propondremos qué cocinar.'}</span>
           </button>
         )}
       </section>
 
-      {favorites.length > 0 && (
-        <section className="home-recipes">
+      {/* Lista de la compra */}
+      <section className="home-block">
+        <div className="home-section-head">
+          <h2>Para comprar</h2>
+          {items.length > 0 && (
+            <button className="link-btn link-green" onClick={() => switchTab(paths.list)}>
+              Ver lista{done ? ` · ${done} en el carrito` : ''}
+            </button>
+          )}
+        </div>
+        <div className="card home-list-card">
+          {pending.length === 0 ? (
+            <p className="home-list-empty">{items.length ? '¡Todo comprado! 🎉' : 'Nada pendiente. Añade lo que haga falta 👇'}</p>
+          ) : (
+            <ul>
+              {pending.slice(0, PREVIEW).map((i) => (
+                <li key={i.id}>
+                  <button className="home-item" onClick={() => void toggle(i)}>
+                    <span className="checkbox checkbox-small">
+                      <Icon name="check" size={13} strokeWidth={3} />
+                    </span>
+                    {i.photo ? (
+                      <img className="home-item-thumb" src={i.photo.thumb} alt="" />
+                    ) : (
+                      <span className="home-item-emoji">{CATEGORY_BY_ID[i.category]?.emoji}</span>
+                    )}
+                    <span className="home-item-name">{i.name}</span>
+                    {i.quantity && <span className="qty-pill">{i.quantity}</span>}
+                  </button>
+                </li>
+              ))}
+              {pending.length > PREVIEW && (
+                <li>
+                  <button className="home-more" onClick={() => switchTab(paths.list)}>
+                    y {pending.length - PREVIEW} más
+                    <Icon name="chevron" size={14} />
+                  </button>
+                </li>
+              )}
+            </ul>
+          )}
+          <div className="home-list-add">
+            <QuickAdd compact />
+          </div>
+        </div>
+      </section>
+
+      {user && recipes.length > 0 && (
+        <button className="ai-banner home-ai-banner" onClick={() => navigate(paths.recipeAi)}>
+          <span className="ai-teaser-icon">
+            <Icon name="sparkles" size={20} />
+          </span>
+          <span className="ai-banner-text">
+            <strong>Crear receta con IA</strong>
+            <span>Dile qué te apetece o qué tienes en la nevera</span>
+          </span>
+          <Icon name="chevron" size={18} />
+        </button>
+      )}
+
+      {latest.length > 0 && (
+        <section className="home-block home-recipes">
           <div className="home-section-head">
             <h2>Vuestras recetas</h2>
             <button className="link-btn" onClick={() => switchTab(paths.recipes)}>
@@ -129,52 +173,32 @@ export function Home() {
             </button>
           </div>
           <div className="h-scroll">
-            {favorites.map((r) => (
+            {latest.map((r) => (
               <RecipeCard key={r.id} recipe={r} />
             ))}
-            <button className="recipe-card recipe-card-new" onClick={() => navigate(paths.recipeNew)}>
+            <button className="recipe-card recipe-card-new" onClick={() => navigate(user ? paths.recipeAi : paths.recipeNew)}>
               <Icon name="plus" size={26} />
               <span>Nueva</span>
             </button>
           </div>
         </section>
       )}
-
-      <section className="home-card home-ai">
-        <span className="ai-teaser-icon">
-          <Icon name="sparkles" size={20} />
-        </span>
-        <span>
-          <strong>Muy pronto: recetas con IA</strong>
-          <span className="muted small block">
-            Pega un enlace, un texto o una foto y Cerlis extraerá los ingredientes y la preparación por vosotros.
-          </span>
-        </span>
-      </section>
     </Page>
   )
 }
 
-function ProgressRing({ value, pending, empty }: { value: number; pending: number; empty: boolean }) {
-  const r = 20
-  const c = 2 * Math.PI * r
+function FeaturedRecipe({ recipe }: { recipe: Recipe }) {
+  const photo = usePhoto(recipe.photo)
+  const meta = [formatTime(recipe.time), recipe.servings && `${recipe.servings} raciones`, `${recipe.ingredients.length} ingredientes`]
+    .filter(Boolean)
+    .join(' · ')
   return (
-    <span className="ring">
-      <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden>
-        <circle cx="26" cy="26" r={r} className="ring-track" />
-        <circle
-          cx="26"
-          cy="26"
-          r={r}
-          className="ring-value"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - value)}
-          transform="rotate(-90 26 26)"
-        />
-      </svg>
-      <span className="ring-label">
-        {empty ? <Icon name="cart" size={20} /> : pending === 0 ? <Icon name="check" size={20} strokeWidth={2.6} /> : pending}
+    <button className={`featured ${recipe.photo ? 'has-photo' : recipeTint(recipe)}`} onClick={() => navigate(paths.recipe(recipe.id))}>
+      {photo ? <img src={photo} alt="" /> : <span className="featured-emoji">{recipe.emoji}</span>}
+      <span className="featured-info">
+        <strong>{recipe.title}</strong>
+        <span>{meta}</span>
       </span>
-    </span>
+    </button>
   )
 }

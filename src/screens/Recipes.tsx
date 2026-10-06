@@ -3,6 +3,7 @@ import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/Icon'
 import { Page } from '../components/Page'
 import { normalize } from '../lib/categories'
+import { useUser } from '../lib/auth'
 import { useData } from '../lib/data'
 import { formatTime, recipeTint } from '../lib/recipes'
 import { navigate, paths } from '../lib/router'
@@ -12,6 +13,7 @@ type Filter = { kind: 'all' } | { kind: 'fav' } | { kind: 'tag'; tag: string }
 
 export function Recipes() {
   const { recipes, store } = useData()
+  const aiAvailable = !!useUser()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
 
@@ -56,13 +58,20 @@ export function Recipes() {
           emoji="📖"
           title="Vuestro recetario está vacío"
           action={
-            <button className="btn btn-primary" onClick={() => navigate(paths.recipeNew)}>
-              <Icon name="plus" size={18} /> Añadir la primera receta
-            </button>
+            <div className="empty-actions">
+              {aiAvailable && (
+                <button className="btn btn-ai" onClick={() => navigate(paths.recipeAi)}>
+                  <Icon name="sparkles" size={18} /> Crear con IA
+                </button>
+              )}
+              <button className={`btn ${aiAvailable ? 'btn-soft' : 'btn-primary'}`} onClick={() => navigate(paths.recipeNew)}>
+                <Icon name="edit" size={18} /> Escribir a mano
+              </button>
+            </div>
           }
         >
-          Guarda aquí vuestros platos favoritos con sus ingredientes y pasos. Desde cada receta podréis mandar los
-          ingredientes a la lista de la compra.
+          Guarda aquí vuestros platos favoritos. Describe lo que te apetece y la IA escribe la receta, o añádela tú.
+          Desde cada receta podréis mandar los ingredientes a la lista de la compra.
         </EmptyState>
       ) : (
         <>
@@ -81,6 +90,19 @@ export function Recipes() {
               </button>
             )}
           </div>
+
+          {aiAvailable && (
+            <button className="ai-banner" onClick={() => navigate(paths.recipeAi)}>
+              <span className="ai-teaser-icon">
+                <Icon name="sparkles" size={20} />
+              </span>
+              <span className="ai-banner-text">
+                <strong>Crear receta con IA</strong>
+                <span>“Una lasaña”, “algo con calabacín y huevos”…</span>
+              </span>
+              <Icon name="chevron" size={18} />
+            </button>
+          )}
 
           <div className="chips-scroll">
             <button className={`chip ${isActive({ kind: 'all' }) ? 'is-selected' : ''}`} onClick={() => setFilter({ kind: 'all' })}>
@@ -111,16 +133,6 @@ export function Recipes() {
               ))}
             </div>
           )}
-
-          <button className="ai-teaser" disabled>
-            <span className="ai-teaser-icon">
-              <Icon name="sparkles" size={20} />
-            </span>
-            <span>
-              <strong>Importar con IA</strong>
-              <span className="muted">Próximamente: pega un enlace o una foto y se rellena sola.</span>
-            </span>
-          </button>
         </>
       )}
     </Page>
@@ -133,7 +145,7 @@ export function RecipeCard({ recipe, onToggleFav }: { recipe: Recipe; onToggleFa
     <div className="recipe-card" role="link" tabIndex={0} onClick={() => navigate(paths.recipe(recipe.id))}
       onKeyDown={(e) => e.key === 'Enter' && navigate(paths.recipe(recipe.id))}>
       <div className={`recipe-card-art ${recipeTint(recipe)}`}>
-        <span>{recipe.emoji}</span>
+        {recipe.photo ? <img src={recipe.photo.thumb} alt="" loading="lazy" /> : <span>{recipe.emoji}</span>}
         {onToggleFav && (
           <button
             className={`fav-btn ${recipe.favorite ? 'is-fav' : ''}`}

@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/Icon'
 import { ItemSheet } from '../components/ItemSheet'
 import { Page } from '../components/Page'
+import { PhotoViewer } from '../components/Photo'
 import { QuickAdd } from '../components/QuickAdd'
 import { ConfirmSheet } from '../components/Sheet'
 import { SwipeRow } from '../components/SwipeRow'
 import { CATEGORIES } from '../lib/categories'
 import { useData } from '../lib/data'
+import { usePhoto } from '../lib/photos'
 import { setPrefs, usePrefs } from '../lib/prefs'
 import { navigate, paths } from '../lib/router'
 import { sortItems, useShoppingActions } from '../lib/shopping'
@@ -20,6 +22,9 @@ export function ShoppingList() {
   const [editing, setEditing] = useState<ShoppingItem | null>(null)
   const [confirmClear, setConfirmClear] = useState<'checked' | 'all' | null>(null)
   const [showChecked, setShowChecked] = useState(true)
+  const [viewing, setViewing] = useState<ShoppingItem | null>(null)
+  const viewingPhoto = usePhoto(viewing?.photo)
+  const closeViewer = useCallback(() => setViewing(null), [])
 
   const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
   const checked = useMemo(
@@ -59,6 +64,20 @@ export function ShoppingList() {
               {meta && <span className="item-meta">{meta}</span>}
             </span>
             {item.quantity && <span className="qty-pill">{item.quantity}</span>}
+            {item.photo && (
+              <span
+                className="item-thumb"
+                role="button"
+                aria-label={`Ver foto de ${item.name}`}
+                onClick={(e) => {
+                  // Ver la foto no debe marcar el producto.
+                  e.stopPropagation()
+                  setViewing(item)
+                }}
+              >
+                <img src={item.photo.thumb} alt="" />
+              </span>
+            )}
           </button>
         </SwipeRow>
       </li>
@@ -159,6 +178,7 @@ export function ShoppingList() {
         </p>
       )}
 
+      <PhotoViewer src={viewing ? viewingPhoto : null} alt={viewing?.name} onClose={closeViewer} />
       <ItemSheet
         item={editing}
         onClose={() => setEditing(null)}

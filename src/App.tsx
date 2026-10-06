@@ -69,7 +69,7 @@ function Main() {
         screen = <RecipeDetail id={route.id} />
         break
       case 'recipe-new':
-        screen = <RecipeEditor />
+        screen = <RecipeEditor aiFocus={route.ai} />
         break
       case 'recipe-edit':
         screen = <RecipeEditor key={route.id} id={route.id} />
