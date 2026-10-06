@@ -39,10 +39,12 @@ export function Home() {
   const done = items.length - pending.length
   const countdown = home.countdown && !remaining(home.countdown.date, now).expired ? home.countdown : undefined
   const showTip = !hideHomeTip && !home.photo && !home.message && !home.countdown
+  // Con foto, la cuenta atrás va encima de ella (arriba o abajo); sin foto, como tarjeta.
+  const glassPos = heroPhoto && countdown ? (countdown.position ?? 'bottom') : null
 
   return (
     <Page title="Inicio" className="theme-home home-page" hideLargeTitle overlay>
-      <header className={`home-hero ${heroPhoto ? 'has-photo' : ''}`}>
+      <header className={`home-hero ${heroPhoto ? 'has-photo' : ''} ${glassPos ? `glass-${glassPos}` : ''}`}>
         {heroPhoto && (
           <button className="home-hero-photo" onClick={() => setViewer(true)} aria-label="Ver foto">
             <img src={heroPhoto} alt="" />
@@ -57,6 +59,7 @@ export function Home() {
             )}
           </button>
         </div>
+        {glassPos === 'top' && <CountdownGlass countdown={countdown!} now={now} />}
         <div className="home-hero-text">
           <p className="home-date capitalize">{dateFmt.format(now)}</p>
           <h1>{name ? `${greeting(new Date(now))}, ${name}` : greeting(new Date(now))}</h1>
@@ -69,12 +72,13 @@ export function Home() {
             </button>
           </div>
         </div>
+        {glassPos === 'bottom' && <CountdownGlass countdown={countdown!} now={now} />}
       </header>
       {heroPhoto && <PhotoViewer src={viewer ? heroPhoto : null} onClose={closeViewer} />}
 
       <div className="home-feed">
         {home.message && <MessageCard message={home.message} />}
-        {countdown && <CountdownCard countdown={countdown} now={now} />}
+        {countdown && !glassPos && <CountdownCard countdown={countdown} now={now} />}
 
         {showTip && (
           <div className="home-tip">
@@ -182,6 +186,40 @@ function CountdownCard({ countdown, now }: { countdown: NonNullable<HomeSettings
         </>
       )}
     </section>
+  )
+}
+
+/** Cuenta atrás translúcida que se superpone a la foto de Inicio. */
+function CountdownGlass({ countdown, now }: { countdown: NonNullable<HomeSettings['countdown']>; now: number }) {
+  const r = remaining(countdown.date, now)
+  return (
+    <section className="countdown-glass" aria-label={`Cuenta atrás: ${countdown.title}`}>
+      <div className="glass-head">
+        <Icon name="clock" size={16} />
+        <strong>{countdown.title}</strong>
+        <span className="glass-date capitalize">{glassDateFmt.format(countdown.date)}</span>
+      </div>
+      {r.arrived ? (
+        <p className="glass-arrived">¡Ha llegado el día! 🎉</p>
+      ) : (
+        <div className="glass-units">
+          {r.days > 0 && <GlassUnit value={r.days} label={r.days === 1 ? 'día' : 'días'} />}
+          <GlassUnit value={r.hours} label={r.hours === 1 ? 'hora' : 'horas'} />
+          <GlassUnit value={r.minutes} label="min" />
+        </div>
+      )}
+    </section>
+  )
+}
+
+const glassDateFmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' })
+
+function GlassUnit({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="glass-unit">
+      <span className="glass-value">{value}</span>
+      <span className="glass-label">{label}</span>
+    </span>
   )
 }
 

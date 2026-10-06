@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { HomeSettingsCard } from '../components/HomeSettingsCard'
 import { Icon, type IconName } from '../components/Icon'
 import { Page } from '../components/Page'
+import { Segmented } from '../components/Segmented'
 import { ConfirmSheet, Sheet } from '../components/Sheet'
 import { SyncBadge } from '../components/SyncBadge'
 import { useToast } from '../components/Toast'
@@ -201,19 +202,5 @@ function RowIcon({ icon, tint }: { icon: IconName; tint: Tint }): ReactNode {
     <span className={`row-icon tint-${tint}-solid`}>
       <Icon name={icon} size={18} />
     </span>
-  )
-}
-
-function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
-  const idx = options.findIndex((o) => o.value === value)
-  return (
-    <div className="segmented" role="radiogroup" style={{ ['--seg-count' as string]: options.length, ['--seg-index' as string]: idx }}>
-      <span className="segmented-thumb" />
-      {options.map((o) => (
-        <button key={o.value} role="radio" aria-checked={o.value === value} onClick={() => onChange(o.value)}>
-          {o.label}
-        </button>
-      ))}
-    </div>
   )
 }

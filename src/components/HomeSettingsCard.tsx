@@ -5,6 +5,7 @@ import { savePendingPhoto } from '../lib/photos'
 import { getPrefs } from '../lib/prefs'
 import { Icon } from './Icon'
 import { PhotoInput } from './Photo'
+import { Segmented } from './Segmented'
 import { Sheet } from './Sheet'
 import { useToast } from './Toast'
 
@@ -194,6 +195,7 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const { home, store } = useData()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
+  const [position, setPosition] = useState<'top' | 'bottom'>('bottom')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -201,6 +203,7 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
     if (!open) return
     const c = home.countdown
     setTitle(c?.title ?? '')
+    setPosition(c?.position ?? 'bottom')
     setError(null)
     // Por defecto, dentro de una semana a las 9:00.
     const def = new Date()
@@ -226,7 +229,7 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
     }
   }
 
-  const save = () => (valid ? write({ title: title.trim(), date: target! }) : undefined)
+  const save = () => (valid ? write({ title: title.trim(), date: target!, position }) : undefined)
 
   return (
     <Sheet
@@ -258,6 +261,22 @@ function CountdownSheet({ open, onClose }: { open: boolean; onClose: () => void 
         </label>
       </div>
       {target && <p className="muted small sheet-intro capitalize">{countdownDateFmt.format(target)}</p>}
+      <div className="card settings-card countdown-position">
+        <div className="settings-row">
+          <span className="row-label">
+            Sobre la foto
+            <span className="muted small block">{home.photo ? 'Dónde se ve en Inicio' : 'Cuando pongáis una foto de los dos'}</span>
+          </span>
+          <Segmented<'top' | 'bottom'>
+            value={position}
+            onChange={setPosition}
+            options={[
+              { value: 'top', label: 'Arriba' },
+              { value: 'bottom', label: 'Abajo' },
+            ]}
+          />
+        </div>
+      </div>
       {error && <p className="form-error sheet-error">{error}</p>}
     </Sheet>
   )
