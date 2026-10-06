@@ -1,10 +1,19 @@
 import { uid } from '../ids'
-import type { NewItem, Recipe, RecipeDraft, ShoppingItem } from '../types'
+import type { HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem } from '../types'
 import type { DataStore } from './types'
 
 const ITEMS_KEY = 'cerlis:items'
 const RECIPES_KEY = 'cerlis:recipes'
 const PHOTO_PREFIX = 'cerlis:photo:'
+const HOME_KEY = 'cerlis:home'
+
+function readHome(): HomeSettings {
+  try {
+    return JSON.parse(localStorage.getItem(HOME_KEY) ?? '{}') as HomeSettings
+  } catch {
+    return {}
+  }
+}
 
 function read<T>(key: string): T[] {
   try {
@@ -22,6 +31,8 @@ function read<T>(key: string): T[] {
 export function createLocalStore(): DataStore {
   const itemListeners = new Set<(items: ShoppingItem[]) => void>()
   const recipeListeners = new Set<(recipes: Recipe[]) => void>()
+  const homeListeners = new Set<(home: HomeSettings) => void>()
+  let home = readHome()
 
   let items = read<ShoppingItem>(ITEMS_KEY)
   let recipes = read<Recipe>(RECIPES_KEY)
@@ -47,6 +58,9 @@ export function createLocalStore(): DataStore {
     } else if (e.key === RECIPES_KEY) {
       recipes = read(RECIPES_KEY)
       emitRecipes()
+    } else if (e.key === HOME_KEY) {
+      home = readHome()
+      homeListeners.forEach((cb) => cb(home))
     }
   }
   window.addEventListener('storage', onStorage)
@@ -99,6 +113,17 @@ export function createLocalStore(): DataStore {
       saveRecipes(recipes.filter((r) => r.id !== id))
     },
 
+    subscribeHome(cb) {
+      homeListeners.add(cb)
+      cb(home)
+      return () => homeListeners.delete(cb)
+    },
+    async updateHome(patch) {
+      home = JSON.parse(JSON.stringify({ ...home, ...patch })) as HomeSettings
+      localStorage.setItem(HOME_KEY, JSON.stringify(home))
+      homeListeners.forEach((cb) => cb(home))
+    },
+
     async savePhoto(dataUrl) {
       const id = uid()
       // Puede fallar si se llena el almacenamiento del navegador (~5 MB).
@@ -120,6 +145,7 @@ export function createLocalStore(): DataStore {
       window.removeEventListener('storage', onStorage)
       itemListeners.clear()
       recipeListeners.clear()
+      homeListeners.clear()
     },
   }
 }

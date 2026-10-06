@@ -7,6 +7,8 @@ export interface Prefs {
   theme: ThemePref
   /** Agrupar la lista de la compra por pasillos. */
   groupByCategory: boolean
+  /** Ocultar la sugerencia de personalizar Inicio. */
+  hideHomeTip: boolean
 }
 
 const KEY = 'cerlis:prefs'
@@ -14,6 +16,7 @@ const DEFAULTS: Prefs = {
   name: '',
   theme: 'system',
   groupByCategory: true,
+  hideHomeTip: false,
 }
 
 function load(): Prefs {

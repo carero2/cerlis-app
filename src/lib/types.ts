@@ -63,5 +63,13 @@ export interface Recipe {
 export type NewItem = Omit<ShoppingItem, 'id' | 'createdAt' | 'checked'> & { checked?: boolean }
 export type RecipeDraft = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
 
+/** Personalización compartida de la pantalla de inicio (todo opcional). */
+export interface HomeSettings {
+  /** Foto de los dos que encabeza Inicio. */
+  photo?: PhotoRef
+  message?: { text: string; author?: string; updatedAt: number }
+  countdown?: { title: string; emoji: string; /** Fecha objetivo en ms. */ date: number }
+}
+
 /** `denied`: la cuenta de Google no está en la lista de cuentas permitidas. */
 export type SyncState = 'local' | 'connecting' | 'online' | 'offline' | 'error' | 'denied'

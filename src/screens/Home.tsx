@@ -1,17 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { Page } from '../components/Page'
+import { PhotoViewer } from '../components/Photo'
 import { QuickAdd } from '../components/QuickAdd'
 import { useUser } from '../lib/auth'
 import { CATEGORY_BY_ID } from '../lib/categories'
+import { countdownDateFmt, remaining, useNow } from '../lib/countdown'
 import { useData } from '../lib/data'
 import { usePhoto } from '../lib/photos'
-import { usePrefs } from '../lib/prefs'
+import { setPrefs, usePrefs } from '../lib/prefs'
 import { formatTime, recipeTint } from '../lib/recipes'
 import { navigate, paths, switchTab } from '../lib/router'
 import { sortItems, useShoppingActions } from '../lib/shopping'
-import type { Recipe } from '../lib/types'
-import { RecipeCard } from './Recipes'
+import type { HomeSettings, Recipe } from '../lib/types'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -25,38 +26,29 @@ const dateFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeri
 const PREVIEW = 5
 
 export function Home() {
-  const { items, recipes } = useData()
-  const { name } = usePrefs()
+  const { items, recipes, home } = useData()
+  const { name, hideHomeTip } = usePrefs()
   const user = useUser()
   const { toggle } = useShoppingActions()
-  const [seed, setSeed] = useState(() => Math.random())
+  const now = useNow()
+  const [viewer, setViewer] = useState(false)
+  const closeViewer = useCallback(() => setViewer(false), [])
+  const heroPhoto = usePhoto(home.photo)
 
   const pending = useMemo(() => sortItems(items.filter((i) => !i.checked)), [items])
   const done = items.length - pending.length
-
-  const latest = useMemo(
-    () => [...recipes].sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt).slice(0, 8),
-    [recipes],
-  )
-
-  // Sugerencia del día: prioriza favoritas y se puede volver a tirar el dado.
-  const suggestion = useMemo(() => {
-    if (!recipes.length) return null
-    const favs = recipes.filter((r) => r.favorite)
-    const pool = favs.length >= 3 ? favs : recipes
-    return pool[Math.floor(seed * pool.length) % pool.length]
-  }, [recipes, seed])
-
-  const title = name ? `${greeting()}, ${name}` : greeting()
+  const countdown = home.countdown && !remaining(home.countdown.date, now).expired ? home.countdown : undefined
+  const showTip = !hideHomeTip && !home.photo && !home.message && !home.countdown
 
   return (
     <Page title="Inicio" className="theme-home home-page" hideLargeTitle overlay>
-      <header className="home-hero">
+      <header className={`home-hero ${heroPhoto ? 'has-photo' : ''}`}>
+        {heroPhoto && (
+          <button className="home-hero-photo" onClick={() => setViewer(true)} aria-label="Ver foto">
+            <img src={heroPhoto} alt="" />
+          </button>
+        )}
         <div className="home-hero-top">
-          <div>
-            <p className="home-date capitalize">{dateFmt.format(new Date())}</p>
-            <h1>{title}</h1>
-          </div>
           <button className="home-avatar" onClick={() => switchTab(paths.settings)} aria-label="Ajustes">
             {user?.photoURL ? (
               <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />
@@ -65,140 +57,221 @@ export function Home() {
             )}
           </button>
         </div>
-        <div className="home-stats">
-          <button className="stat stat-list" onClick={() => switchTab(paths.list)}>
-            <span className="stat-icon">
-              <Icon name="cart" size={20} />
-            </span>
-            <span className="stat-value">{pending.length}</span>
-            <span className="stat-label">por comprar</span>
-          </button>
-          <button className="stat stat-recipes" onClick={() => switchTab(paths.recipes)}>
-            <span className="stat-icon">
-              <Icon name="book" size={20} />
-            </span>
-            <span className="stat-value">{recipes.length}</span>
-            <span className="stat-label">{recipes.length === 1 ? 'receta' : 'recetas'}</span>
-          </button>
+        <div className="home-hero-text">
+          <p className="home-date capitalize">{dateFmt.format(now)}</p>
+          <h1>{name ? `${greeting(new Date(now))}, ${name}` : greeting(new Date(now))}</h1>
+          <div className="home-pills">
+            <button className="pill" onClick={() => switchTab(paths.list)}>
+              <Icon name="cart" size={15} /> {pending.length} por comprar
+            </button>
+            <button className="pill" onClick={() => switchTab(paths.recipes)}>
+              <Icon name="book" size={15} /> {recipes.length} {recipes.length === 1 ? 'receta' : 'recetas'}
+            </button>
+          </div>
         </div>
       </header>
+      {heroPhoto && <PhotoViewer src={viewer ? heroPhoto : null} onClose={closeViewer} />}
 
-      {/* ¿Qué cocinamos hoy? */}
-      <section className="home-block">
-        <div className="home-section-head">
-          <h2>¿Qué cocinamos hoy?</h2>
-          {recipes.length > 1 && (
-            <button className="icon-btn" onClick={() => setSeed(Math.random())} aria-label="Otra sugerencia">
-              <Icon name="dice" size={20} />
+      <div className="home-feed">
+        {home.message && <MessageCard message={home.message} />}
+        {countdown && <CountdownCard countdown={countdown} now={now} />}
+
+        {showTip && (
+          <div className="home-tip">
+            <button className="home-tip-main" onClick={() => switchTab(paths.settings)}>
+              <span className="home-tip-icons">📸 💌 ⏳</span>
+              <span>
+                <strong>Personalizad vuestro inicio</strong>
+                <span className="muted small block">Una foto de los dos, un mensaje o una cuenta atrás.</span>
+              </span>
             </button>
-          )}
-        </div>
-        {suggestion ? (
-          <FeaturedRecipe recipe={suggestion} />
-        ) : (
-          <button className="ai-hero" onClick={() => navigate(user ? paths.recipeAi : paths.recipeNew)}>
-            <span className="ai-hero-emoji">🧑‍🍳</span>
-            <strong>Añadid vuestra primera receta</strong>
-            <span>{user ? 'Describe un plato y la IA la escribe por vosotros.' : 'Y aquí os propondremos qué cocinar.'}</span>
-          </button>
+            <button className="icon-btn" onClick={() => setPrefs({ hideHomeTip: true })} aria-label="Ocultar">
+              <Icon name="x" size={16} />
+            </button>
+          </div>
         )}
-      </section>
 
-      {/* Lista de la compra */}
-      <section className="home-block">
-        <div className="home-section-head">
-          <h2>Para comprar</h2>
-          {items.length > 0 && (
-            <button className="link-btn link-green" onClick={() => switchTab(paths.list)}>
-              Ver lista{done ? ` · ${done} en el carrito` : ''}
-            </button>
-          )}
-        </div>
-        <div className="card home-list-card">
-          {pending.length === 0 ? (
-            <p className="home-list-empty">{items.length ? '¡Todo comprado! 🎉' : 'Nada pendiente. Añade lo que haga falta 👇'}</p>
-          ) : (
-            <ul>
-              {pending.slice(0, PREVIEW).map((i) => (
-                <li key={i.id}>
-                  <button className="home-item" onClick={() => void toggle(i)}>
-                    <span className="checkbox checkbox-small">
-                      <Icon name="check" size={13} strokeWidth={3} />
-                    </span>
-                    {i.photo ? (
-                      <img className="home-item-thumb" src={i.photo.thumb} alt="" />
-                    ) : (
-                      <span className="home-item-emoji">{CATEGORY_BY_ID[i.category]?.emoji}</span>
-                    )}
-                    <span className="home-item-name">{i.name}</span>
-                    {i.quantity && <span className="qty-pill">{i.quantity}</span>}
-                  </button>
-                </li>
-              ))}
-              {pending.length > PREVIEW && (
-                <li>
-                  <button className="home-more" onClick={() => switchTab(paths.list)}>
-                    y {pending.length - PREVIEW} más
-                    <Icon name="chevron" size={14} />
-                  </button>
-                </li>
-              )}
-            </ul>
-          )}
-          <div className="home-list-add">
-            <QuickAdd compact />
-          </div>
-        </div>
-      </section>
-
-      {user && recipes.length > 0 && (
-        <button className="ai-banner home-ai-banner" onClick={() => navigate(paths.recipeAi)}>
-          <span className="ai-teaser-icon">
-            <Icon name="sparkles" size={20} />
-          </span>
-          <span className="ai-banner-text">
-            <strong>Crear receta con IA</strong>
-            <span>Dile qué te apetece o qué tienes en la nevera</span>
-          </span>
-          <Icon name="chevron" size={18} />
-        </button>
-      )}
-
-      {latest.length > 0 && (
-        <section className="home-block home-recipes">
+        {/* Lista de la compra */}
+        <section className="home-block">
           <div className="home-section-head">
-            <h2>Vuestras recetas</h2>
-            <button className="link-btn" onClick={() => switchTab(paths.recipes)}>
-              Ver todas
-            </button>
+            <h2>Para comprar</h2>
+            {items.length > 0 && (
+              <button className="link-btn link-green" onClick={() => switchTab(paths.list)}>
+                Ver lista{done ? ` · ${done} en el carrito` : ''}
+              </button>
+            )}
           </div>
-          <div className="h-scroll">
-            {latest.map((r) => (
-              <RecipeCard key={r.id} recipe={r} />
-            ))}
-            <button className="recipe-card recipe-card-new" onClick={() => navigate(user ? paths.recipeAi : paths.recipeNew)}>
-              <Icon name="plus" size={26} />
-              <span>Nueva</span>
-            </button>
+          <div className="card home-list-card">
+            {pending.length === 0 ? (
+              <p className="home-list-empty">{items.length ? '¡Todo comprado! 🎉' : 'Nada pendiente. Añade lo que haga falta 👇'}</p>
+            ) : (
+              <ul>
+                {pending.slice(0, PREVIEW).map((i) => (
+                  <li key={i.id}>
+                    <button className="home-item" onClick={() => void toggle(i)}>
+                      <span className="checkbox checkbox-small">
+                        <Icon name="check" size={13} strokeWidth={3} />
+                      </span>
+                      {i.photo ? (
+                        <img className="home-item-thumb" src={i.photo.thumb} alt="" />
+                      ) : (
+                        <span className="home-item-emoji">{CATEGORY_BY_ID[i.category]?.emoji}</span>
+                      )}
+                      <span className="home-item-name">{i.name}</span>
+                      {i.quantity && <span className="qty-pill">{i.quantity}</span>}
+                    </button>
+                  </li>
+                ))}
+                {pending.length > PREVIEW && (
+                  <li>
+                    <button className="home-more" onClick={() => switchTab(paths.list)}>
+                      y {pending.length - PREVIEW} más
+                      <Icon name="chevron" size={14} />
+                    </button>
+                  </li>
+                )}
+              </ul>
+            )}
+            <div className="home-list-add">
+              <QuickAdd compact />
+            </div>
           </div>
         </section>
-      )}
+
+        <RecipesBlock recipes={recipes} aiAvailable={!!user} />
+      </div>
     </Page>
   )
 }
 
-function FeaturedRecipe({ recipe }: { recipe: Recipe }) {
-  const photo = usePhoto(recipe.photo)
-  const meta = [formatTime(recipe.time), recipe.servings && `${recipe.servings} raciones`, `${recipe.ingredients.length} ingredientes`]
-    .filter(Boolean)
-    .join(' · ')
+function MessageCard({ message }: { message: NonNullable<HomeSettings['message']> }) {
   return (
-    <button className={`featured ${recipe.photo ? 'has-photo' : recipeTint(recipe)}`} onClick={() => navigate(paths.recipe(recipe.id))}>
-      {photo ? <img src={photo} alt="" /> : <span className="featured-emoji">{recipe.emoji}</span>}
-      <span className="featured-info">
-        <strong>{recipe.title}</strong>
-        <span>{meta}</span>
+    <figure className="message-card">
+      <span className="message-quote" aria-hidden>
+        “
       </span>
-    </button>
+      <blockquote>{message.text}</blockquote>
+      {message.author && <figcaption>— {message.author}</figcaption>}
+    </figure>
+  )
+}
+
+function CountdownCard({ countdown, now }: { countdown: NonNullable<HomeSettings['countdown']>; now: number }) {
+  const r = remaining(countdown.date, now)
+  return (
+    <section className="countdown-card">
+      <div className="countdown-head">
+        <span className="countdown-emoji">{countdown.emoji}</span>
+        <span>
+          <strong>{countdown.title}</strong>
+          <span className="countdown-date capitalize">{countdownDateFmt.format(countdown.date)}</span>
+        </span>
+      </div>
+      {r.arrived ? (
+        <p className="countdown-arrived">¡Ha llegado el día! 🎉</p>
+      ) : (
+        <>
+          <div className="countdown-units">
+            {r.days > 0 && <Unit value={r.days} label={r.days === 1 ? 'día' : 'días'} />}
+            <Unit value={r.hours} label={r.hours === 1 ? 'hora' : 'horas'} />
+            <Unit value={r.minutes} label="min" />
+          </div>
+          {r.days > 0 && <p className="countdown-total">o, lo que es lo mismo, {r.totalHours.toLocaleString('es-ES')} horas</p>}
+        </>
+      )}
+    </section>
+  )
+}
+
+function Unit({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="countdown-unit">
+      <span className="countdown-value">{value}</span>
+      <span className="countdown-label">{label}</span>
+    </span>
+  )
+}
+
+/** Recetas en pequeño: sugerencia del día y un carrusel compacto. */
+function RecipesBlock({ recipes, aiAvailable }: { recipes: Recipe[]; aiAvailable: boolean }) {
+  const [seed, setSeed] = useState(() => Math.random())
+  const newPath = aiAvailable ? paths.recipeAi : paths.recipeNew
+
+  const latest = useMemo(
+    () => [...recipes].sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt).slice(0, 10),
+    [recipes],
+  )
+  const suggestion = useMemo(() => {
+    if (!recipes.length) return null
+    const favs = recipes.filter((r) => r.favorite)
+    const pool = favs.length >= 3 ? favs : recipes
+    return pool[Math.floor(seed * pool.length) % pool.length]
+  }, [recipes, seed])
+
+  return (
+    <section className="home-block home-recipes">
+      <div className="home-section-head">
+        <h2>Recetas</h2>
+        {recipes.length > 0 && (
+          <button className="link-btn" onClick={() => switchTab(paths.recipes)}>
+            Ver todas
+          </button>
+        )}
+      </div>
+
+      {suggestion ? (
+        <div className="card today-card">
+          <button className="today-main" onClick={() => navigate(paths.recipe(suggestion.id))}>
+            <RecipeThumb recipe={suggestion} className="today-thumb" />
+            <span className="today-text">
+              <span className="today-kicker">¿Qué cocinamos hoy?</span>
+              <strong>{suggestion.title}</strong>
+              <span className="muted small">
+                {[formatTime(suggestion.time), `${suggestion.ingredients.length} ingredientes`].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </button>
+          {recipes.length > 1 && (
+            <button className="icon-btn today-dice" onClick={() => setSeed(Math.random())} aria-label="Otra sugerencia">
+              <Icon name="dice" size={20} />
+            </button>
+          )}
+        </div>
+      ) : (
+        <button className="card today-card today-empty" onClick={() => navigate(newPath)}>
+          <span className="today-thumb tint-peach">🧑‍🍳</span>
+          <span className="today-text">
+            <strong>Añadid vuestra primera receta</strong>
+            <span className="muted small">{aiAvailable ? 'Describe un plato y la IA la escribe.' : 'Y aquí os propondremos qué cocinar.'}</span>
+          </span>
+          <Icon name="plus" size={18} className="muted" />
+        </button>
+      )}
+
+      {latest.length > 1 && (
+        <div className="h-scroll mini-scroll">
+          {latest.map((r) => (
+            <button key={r.id} className="mini-recipe" onClick={() => navigate(paths.recipe(r.id))}>
+              <RecipeThumb recipe={r} className="mini-thumb" />
+              <span className="mini-title">{r.title}</span>
+            </button>
+          ))}
+          <button className="mini-recipe mini-new" onClick={() => navigate(newPath)}>
+            <span className="mini-thumb">
+              {aiAvailable ? <Icon name="sparkles" size={22} /> : <Icon name="plus" size={22} />}
+            </span>
+            <span className="mini-title">Nueva</span>
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function RecipeThumb({ recipe, className }: { recipe: Recipe; className: string }) {
+  return recipe.photo ? (
+    <img className={className} src={recipe.photo.thumb} alt="" loading="lazy" />
+  ) : (
+    <span className={`${className} ${recipeTint(recipe)}`}>{recipe.emoji}</span>
   )
 }

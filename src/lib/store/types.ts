@@ -1,4 +1,4 @@
-import type { NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
+import type { HomeSettings, NewItem, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
 
 export type Unsubscribe = () => void
 
@@ -20,6 +20,10 @@ export interface DataStore {
   createRecipe(draft: RecipeDraft): Promise<string>
   updateRecipe(id: string, patch: Partial<RecipeDraft>): Promise<void>
   deleteRecipe(id: string): Promise<void>
+
+  subscribeHome(cb: (home: HomeSettings) => void): Unsubscribe
+  /** Un campo a `undefined` lo elimina. */
+  updateHome(patch: Partial<HomeSettings>): Promise<void>
 
   /** Guarda una foto grande (data URL) y devuelve su id. */
   savePhoto(dataUrl: string): Promise<string>

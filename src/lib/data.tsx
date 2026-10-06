@@ -2,13 +2,14 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { firebaseConfig } from './store/config'
 import { createLocalStore } from './store/local'
 import type { DataStore } from './store/types'
-import type { Recipe, ShoppingItem, SyncState } from './types'
+import type { HomeSettings, Recipe, ShoppingItem, SyncState } from './types'
 import { useUser } from './auth'
 
 interface DataContextValue {
   store: DataStore
   items: ShoppingItem[]
   recipes: Recipe[]
+  home: HomeSettings
   sync: SyncState
   /** true cuando ya llegó la primera tanda de datos. */
   ready: boolean
@@ -32,6 +33,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<DataStore | null>(null)
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [home, setHome] = useState<HomeSettings>({})
   const [sync, setSync] = useState<SyncState>('connecting')
   const [loaded, setLoaded] = useState({ items: false, recipes: false })
   const [error, setError] = useState<string | null>(null)
@@ -80,14 +82,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setRecipes(next)
         setLoaded((l) => (l.recipes ? l : { ...l, recipes: true }))
       }),
+      store.subscribeHome(setHome),
       store.subscribeSync(setSync),
     ]
     return () => offs.forEach((off) => off())
   }, [store])
 
   const value = useMemo<DataContextValue | null>(
-    () => (store ? { store, items, recipes, sync, ready: loaded.items && loaded.recipes } : null),
-    [store, items, recipes, sync, loaded],
+    () => (store ? { store, items, recipes, home, sync, ready: loaded.items && loaded.recipes } : null),
+    [store, items, recipes, home, sync, loaded],
   )
 
   if (error) {

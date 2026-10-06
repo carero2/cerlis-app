@@ -25,7 +25,7 @@ import {
   type FirestoreError,
 } from 'firebase/firestore'
 import { uid } from '../ids'
-import type { Recipe, ShoppingItem, SyncState } from '../types'
+import type { HomeSettings, Recipe, ShoppingItem, SyncState } from '../types'
 import type { DataStore } from './types'
 import type { FirebaseConfig } from './config'
 
@@ -97,6 +97,8 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const itemsCol = collection(db, 'items')
   const recipesCol = collection(db, 'recipes')
   const photosCol = collection(db, 'photos')
+  // Un único documento con la personalización compartida de Inicio.
+  const homeDoc = doc(db, 'settings', 'home')
 
   const syncListeners = new Set<(s: SyncState) => void>()
   let sync: SyncState = navigator.onLine ? 'connecting' : 'offline'
@@ -174,6 +176,18 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
     },
     async deleteRecipe(id) {
       await deleteDoc(doc(recipesCol, id))
+    },
+
+    subscribeHome(cb) {
+      return onSnapshot(
+        homeDoc,
+        (snap) => cb((snap.data() as HomeSettings | undefined) ?? {}),
+        // Es opcional: si falla (p. ej. reglas sin actualizar) la app sigue funcionando.
+        (e) => console.warn('settings/home', e),
+      )
+    },
+    async updateHome(patch) {
+      await setDoc(homeDoc, toUpdate(patch), { merge: true })
     },
 
     async savePhoto(dataUrl) {

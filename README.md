@@ -11,8 +11,8 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
   tiene **ingredientes** y **preparación**; con un toque mandas los
   ingredientes que os faltan a la lista. Modo cocina para que no se apague la
   pantalla.
-- **Ajustes**: tu nombre, cuenta de Google, estado de sincronización, tema
-  claro/oscuro y copia de seguridad.
+- **Ajustes**: tu nombre, foto de los dos, mensaje y cuenta atrás para
+  Inicio (opcionales y compartidos), tema y copia de seguridad.
 
 ## Puesta en marcha
 
@@ -97,6 +97,8 @@ items/*    { name, quantity?, category, checked, addedBy?, recipeId?, photo?, cr
 recipes/*  { title, emoji, ingredients: string[], steps: string[], photo?,
              servings?, time?, tags[], notes?, source?, favorite, … }
 photos/*   { data: "data:image/jpeg;base64,…", createdAt }
+settings/home { photo?, message?: { text, author?, updatedAt },
+                countdown?: { title, emoji, date } }
 
 photo = { id, thumb }   // id de photos/* + miniatura JPEG de ~360 px
 ```
@@ -138,5 +140,5 @@ móvil y se guardan en Firestore: una miniatura dentro del producto o receta y
 la imagen grande (≈1280 px, < 1 MB) en la colección `photos`, que solo se
 descarga al abrirla. Con 1 GB gratis de Firestore caben varios miles de fotos.
 
-> Al añadir fotos hay que **volver a publicar las reglas** de
-> [`firestore.rules`](firestore.rules) (incluyen la colección `photos`).
+> Cada vez que cambie [`firestore.rules`](firestore.rules) hay que volver a
+> publicarlas en la consola (ahora incluyen `photos` y `settings`).

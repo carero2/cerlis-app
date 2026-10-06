@@ -37,6 +37,11 @@ service cloud.firestore {
         && request.resource.data.data.size() < 1000000;
     }
 
+    // Personalización compartida de Inicio (foto, mensaje y cuenta atrás).
+    match /settings/{settingId} {
+      allow read, write: if allowed();
+    }
+
     // Todo lo demás queda cerrado.
   }
 }

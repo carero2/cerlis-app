@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { HomeSettingsCard } from '../components/HomeSettingsCard'
 import { Icon, type IconName } from '../components/Icon'
 import { Page } from '../components/Page'
 import { ConfirmSheet, Sheet } from '../components/Sheet'
@@ -74,6 +75,9 @@ export function Settings() {
         {user && <SyncBadge state={sync} />}
       </section>
 
+      <HomeSettingsCard />
+
+      <h2 className="settings-heading">Preferencias</h2>
       <div className="card settings-card">
         <div className="settings-row">
           <RowIcon icon="palette" tint="purple" />
