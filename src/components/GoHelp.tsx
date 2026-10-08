@@ -129,10 +129,11 @@ export function GoHelp({ open, onClose }: { open: boolean; onClose: () => void }
 
         <Rule n={8} title="En esta app">
           <ul>
-            <li>Toca un cruce para ver dónde irá la piedra y vuelve a tocarlo (o pulsa “Colocar”) para jugar.</li>
+            <li>Toca un cruce para ver dónde irá la piedra (puedes tocar otro para cambiarla) y pulsa “Confirmar ficha” para jugar.</li>
             <li>Si la jugada no está permitida, la app te dirá por qué.</li>
             <li>Cada uno juega desde su móvil cuando le toca; en Inicio aparece un aviso cuando es tu turno.</li>
             <li>También podéis jugar los dos en el mismo móvil, pasándoos el teléfono.</li>
+            <li>Con el + de arriba se empieza otra partida, cuando la actual haya terminado.</li>
           </ul>
         </Rule>
       </div>

@@ -5,13 +5,16 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
 
 - **Inicio**: resumen de la lista, añadido rápido y sugerencia de qué cocinar.
 - **Compra**: varias listas por tienda (súper, farmacia…), sincronizadas en
-  tiempo real y agrupadas por pasillos editables (crear, renombrar, ordenar,
-  borrar). La app aprende el pasillo de cada producto cuando lo corriges.
+  tiempo real. Cada lista tiene sus propios pasillos editables (crear,
+  renombrar, ordenar, borrar, copiarlos de otra lista) o ninguno, y entonces
+  sus productos salen todos juntos. La app aprende el pasillo de cada
+  producto cuando lo corriges.
   Detección de cantidad (“2 leche”), deslizar para editar/borrar, “Deshacer”
   y sugerencias de lo que soléis comprar.
 - **Recetas**: recetario con búsqueda, etiquetas y favoritas. Cada receta
   tiene **ingredientes** y **preparación**; con un toque mandas los
-  ingredientes que os faltan a la lista. Modo cocina para que no se apague la
+  ingredientes que os faltan a la lista que elijáis. El dado de Inicio
+  propone solo platos con la etiqueta “Comida” o “Cena”. Modo cocina para que no se apague la
   pantalla.
 - **Calendario**: planes compartidos con vista de mes, eventos de todo el día,
   con hora o de varios días (viajes), repeticiones semanales, mensuales o
@@ -114,7 +117,8 @@ recipes/*  { title, emoji, ingredients: string[], steps: string[], photo?,
 photos/*   { data: "data:image/jpeg;base64,…", createdAt }
 events/*   { title, date: "AAAA-MM-DD", endDate?, allDay, start?: "HH:mm", end?,
              repeat?: weekly|monthly|yearly, who?: uid (o "los dos"), notes?, createdBy? }
-settings/shopping { lists?: [{ id, name, emoji? }], categories?: [{ id, label, emoji? }],
+settings/shopping { lists?: [{ id, name, emoji?, categories?: [{ id, label, emoji? }] }],
+                    categories?: (pasillos antiguos, los hereda el súper),
                     learned?: { [producto]: idPasillo } }
 settings/home { members?: { [uid]: { name, email?, color } }, photo?, message?: { text, author?, updatedAt },
                 countdown?: { title, emoji, date } }

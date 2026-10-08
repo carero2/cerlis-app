@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useData } from '../lib/data'
 import { setPrefs } from '../lib/prefs'
-import { DEFAULT_CATEGORIES, OTHER_CATEGORY, slugId, useShopConfig } from '../lib/shopConfig'
+import { DEFAULT_CATEGORIES, OTHER_CATEGORY, slugId, useShopConfig, withOther } from '../lib/shopConfig'
 import type { CategoryDef, ShopList } from '../lib/types'
 import { Icon } from './Icon'
 import { Segmented } from './Segmented'
@@ -15,6 +15,8 @@ interface Props {
   onClose: () => void
   tab: ManageTab
   onTabChange: (tab: ManageTab) => void
+  /** Lista cuyos pasillos se muestran al abrir. */
+  listId?: string
 }
 
 /** Solo el primer emoji (o nada) de lo que se escriba en el campo de icono. */
@@ -26,54 +28,66 @@ function firstGrapheme(value: string): string | undefined {
 }
 
 type Row = { id: string; name: string; emoji?: string }
+type ListRow = Row & { cats: Row[] }
+
+const toRows = (cats: CategoryDef[]): Row[] => cats.map((c) => ({ id: c.id, name: c.label, emoji: c.emoji }))
+const toDefs = (rows: Row[]): CategoryDef[] =>
+  withOther(rows.filter((r) => r.name.trim()).map((r) => ({ id: r.id, label: r.name.trim(), ...(r.emoji ? { emoji: r.emoji } : {}) })))
 
 /**
- * Gestión de listas (tiendas) y pasillos. Los cambios se guardan al
- * momento y los veis los dos.
+ * Gestión de listas (tiendas) y de los pasillos de cada una. Los cambios
+ * se guardan al momento y los veis los dos.
  */
-export function ShoppingManageSheet({ open, onClose, tab, onTabChange }: Props) {
+export function ShoppingManageSheet({ open, onClose, tab, onTabChange, listId }: Props) {
   const { store, items, releasePhotos } = useData()
   const config = useShopConfig()
   const toast = useToast()
-  const [lists, setLists] = useState<Row[]>([])
-  const [cats, setCats] = useState<Row[]>([])
+  const [lists, setLists] = useState<ListRow[]>([])
+  const [aisleList, setAisleList] = useState('')
   const [newName, setNewName] = useState('')
   const [newEmoji, setNewEmoji] = useState('')
   const [deleting, setDeleting] = useState<Row | null>(null)
-  const [confirmReset, setConfirmReset] = useState(false)
+  const [confirm, setConfirm] = useState<'reset' | 'clear' | null>(null)
 
   useEffect(() => {
     if (!open) return
-    setLists(config.lists.map((l) => ({ id: l.id, name: l.name, emoji: l.emoji })))
-    setCats(config.categories.map((c) => ({ id: c.id, name: c.label, emoji: c.emoji })))
+    setLists(config.lists.map((l) => ({ id: l.id, name: l.name, emoji: l.emoji, cats: toRows(l.categories ?? []) })))
+    setAisleList(listId ?? config.activeListId)
     // Solo al abrir: así no se pisa lo que se está escribiendo.
   }, [open])
 
   useEffect(() => {
     setNewName('')
     setNewEmoji('')
-  }, [tab, open])
+  }, [tab, open, aisleList])
 
   const fail = (e: unknown) => {
     console.error(e)
     toast((e as { code?: string }).code === 'permission-denied' ? 'Firebase no deja guardar: revisa las reglas.' : 'No se ha podido guardar')
   }
 
-  const saveLists = (rows: Row[]) => {
+  /** Guarda todas las listas, cada una con sus pasillos. */
+  const saveLists = (rows: ListRow[]) => {
     setLists(rows)
-    const clean: ShopList[] = rows.filter((r) => r.name.trim()).map((r) => ({ id: r.id, name: r.name.trim(), ...(r.emoji ? { emoji: r.emoji } : {}) }))
+    const clean: ShopList[] = rows
+      .filter((r) => r.name.trim())
+      .map((r) => ({ id: r.id, name: r.name.trim(), ...(r.emoji ? { emoji: r.emoji } : {}), categories: toDefs(r.cats) }))
     store.updateShopping({ lists: clean }).catch(fail)
   }
+
+  const current = lists.find((l) => l.id === aisleList) ?? lists[0]
+  const cats = current?.cats ?? []
   const saveCats = (rows: Row[]) => {
-    setCats(rows)
-    const clean: CategoryDef[] = rows.filter((r) => r.name.trim()).map((r) => ({ id: r.id, label: r.name.trim(), ...(r.emoji ? { emoji: r.emoji } : {}) }))
-    store.updateShopping({ categories: clean }).catch(fail)
+    // "Otros" solo tiene sentido si hay más pasillos.
+    const next = rows.some((r) => r.id !== OTHER_CATEGORY) ? rows : []
+    saveLists(lists.map((l) => (l.id === current.id ? { ...l, cats: next } : l)))
   }
 
   const isLists = tab === 'lists'
-  const rows = isLists ? lists : cats
-  const setRows = isLists ? setLists : setCats
-  const save = isLists ? saveLists : saveCats
+  const rows: Row[] = isLists ? lists : cats
+  const save = (next: Row[]) => (isLists ? saveLists(next as ListRow[]) : saveCats(next))
+  const setRows = (next: Row[]) =>
+    isLists ? setLists(next as ListRow[]) : setLists(lists.map((l) => (l.id === current.id ? { ...l, cats: next } : l)))
 
   const update = (id: string, patch: Partial<Row>) => setRows(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   const move = (i: number, dir: -1 | 1) => {
@@ -89,21 +103,24 @@ export function ShoppingManageSheet({ open, onClose, tab, onTabChange }: Props) 
     if (!name) return
     const row: Row = { id: slugId(name), name, emoji: firstGrapheme(newEmoji) }
     if (isLists) {
-      saveLists([...lists, row])
+      // Las listas nuevas empiezan sin pasillos: todo junto.
+      saveLists([...lists, { ...row, cats: [] }])
       setPrefs({ activeList: row.id })
       toast(`Lista “${name}” creada`)
     } else {
-      // Los pasillos nuevos van antes de "Otros".
-      const otherAt = cats.findIndex((c) => c.id === OTHER_CATEGORY)
-      const next = otherAt === -1 ? [...cats, row] : [...cats.slice(0, otherAt), row, ...cats.slice(otherAt)]
-      saveCats(next)
+      // Los pasillos nuevos van antes de "Otros" (que se añade si no estaba).
+      const base: Row[] = cats.length ? cats : [{ id: OTHER_CATEGORY, name: 'Otros', emoji: '🛒' }]
+      const otherAt = base.findIndex((c) => c.id === OTHER_CATEGORY)
+      saveCats(otherAt === -1 ? [...base, row] : [...base.slice(0, otherAt), row, ...base.slice(otherAt)])
     }
     setNewName('')
     setNewEmoji('')
   }
 
   const itemsIn = (row: Row) =>
-    isLists ? items.filter((i) => config.listOf(i) === row.id) : items.filter((i) => config.categoryOf(i.category).id === row.id)
+    isLists
+      ? items.filter((i) => config.listOf(i) === row.id)
+      : items.filter((i) => config.listOf(i) === current.id && config.categoryOf(i.category, current.id).id === row.id)
 
   const confirmDelete = async () => {
     const row = deleting
@@ -127,6 +144,8 @@ export function ShoppingManageSheet({ open, onClose, tab, onTabChange }: Props) 
   }
 
   const deletingCount = deleting ? itemsIn(deleting).length : 0
+  // Otras listas con pasillos, para copiarlos.
+  const donors = lists.filter((l) => l.id !== current?.id && l.cats.length)
 
   return (
     <Sheet open={open} onClose={onClose} title="Listas y pasillos">
@@ -138,11 +157,44 @@ export function ShoppingManageSheet({ open, onClose, tab, onTabChange }: Props) 
           { value: 'categories', label: 'Pasillos' },
         ]}
       />
+
+      {!isLists && lists.length > 1 && (
+        <div className="chips-scroll manage-list-pick" role="tablist" aria-label="Lista">
+          {lists.map((l) => (
+            <button
+              key={l.id}
+              role="tab"
+              aria-selected={l.id === current?.id}
+              className={`chip ${l.id === current?.id ? 'is-selected' : ''}`}
+              onClick={() => setAisleList(l.id)}
+            >
+              {l.emoji && <span>{l.emoji}</span>} {l.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className="muted small sheet-intro manage-intro">
         {isLists
           ? 'Una lista por tienda o tipo de tienda: súper, farmacia, mercado… El icono es opcional: escribe un emoji.'
-          : 'Ordena los pasillos como los recorréis en la tienda. Si cambias el pasillo de un producto, la app lo recordará.'}
+          : cats.length
+            ? `Pasillos de “${current?.name}”, en el orden en que los recorréis. Si cambias el pasillo de un producto, la app lo recordará.`
+            : `“${current?.name ?? ''}” no usa pasillos: sus productos salen todos juntos. Añade alguno si quieres agruparlos.`}
       </p>
+
+      {!isLists && !cats.length && (
+        <div className="manage-empty-actions">
+          {donors.map((d) => (
+            <button key={d.id} className="btn btn-small btn-soft" onClick={() => saveCats(d.cats.map((c) => ({ ...c })))}>
+              Copiar los de {d.emoji ? `${d.emoji} ` : ''}
+              {d.name}
+            </button>
+          ))}
+          <button className="btn btn-small btn-soft" onClick={() => saveCats(toRows(DEFAULT_CATEGORIES))}>
+            Usar los predefinidos
+          </button>
+        </div>
+      )}
 
       <div className="card manage-list">
         {rows.map((r, i) => {
@@ -215,10 +267,15 @@ export function ShoppingManageSheet({ open, onClose, tab, onTabChange }: Props) 
         </form>
       </div>
 
-      {!isLists && (
-        <button className="link-btn center manage-reset" onClick={() => setConfirmReset(true)}>
-          Restablecer los pasillos predefinidos
-        </button>
+      {!isLists && cats.length > 0 && (
+        <div className="manage-footer-links">
+          <button className="link-btn" onClick={() => setConfirm('reset')}>
+            Restablecer los predefinidos
+          </button>
+          <button className="link-btn" onClick={() => setConfirm('clear')}>
+            Quitar todos los pasillos
+          </button>
+        </div>
       )}
 
       <ConfirmSheet
@@ -239,13 +296,22 @@ export function ShoppingManageSheet({ open, onClose, tab, onTabChange }: Props) 
         onClose={() => setDeleting(null)}
       />
       <ConfirmSheet
-        open={confirmReset}
-        title="¿Restablecer los pasillos?"
-        message="Vuelven los pasillos originales y se pierden los que habéis creado o renombrado."
+        open={confirm === 'reset'}
+        title={`¿Restablecer los pasillos de “${current?.name}”?`}
+        message="Vuelven los pasillos originales y se pierden los que habéis creado o renombrado en esta lista."
         confirmLabel="Restablecer"
         destructive
-        onConfirm={() => saveCats(DEFAULT_CATEGORIES.map((c) => ({ id: c.id, name: c.label, emoji: c.emoji })))}
-        onClose={() => setConfirmReset(false)}
+        onConfirm={() => saveCats(toRows(DEFAULT_CATEGORIES))}
+        onClose={() => setConfirm(null)}
+      />
+      <ConfirmSheet
+        open={confirm === 'clear'}
+        title={`¿Quitar los pasillos de “${current?.name}”?`}
+        message="Los productos de esta lista saldrán todos juntos, sin agrupar. Podrás volver a añadirlos cuando quieras."
+        confirmLabel="Quitar pasillos"
+        destructive
+        onConfirm={() => saveCats([])}
+        onClose={() => setConfirm(null)}
       />
     </Sheet>
   )

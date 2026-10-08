@@ -11,7 +11,7 @@ import { usePeople } from '../lib/people'
 import { useShopConfig } from '../lib/shopConfig'
 import { usePhoto } from '../lib/photos'
 import { setPrefs, usePrefs } from '../lib/prefs'
-import { formatTime, recipeTint } from '../lib/recipes'
+import { formatTime, mealPool, recipeTint } from '../lib/recipes'
 import { navigate, paths, switchTab } from '../lib/router'
 import { sortItems, useShoppingActions } from '../lib/shopping'
 import type { CalendarEvent, HomeSettings, Recipe } from '../lib/types'
@@ -139,7 +139,7 @@ export function Home() {
                       {i.photo ? (
                         <img className="home-item-thumb" src={i.photo.thumb} alt="" />
                       ) : (
-                        <span className="home-item-emoji">{categoryOf(i.category).emoji}</span>
+                        <span className="home-item-emoji">{categoryOf(i.category, listOf(i)).emoji}</span>
                       )}
                       <span className="home-item-name">{i.name}</span>
                       {lists.length > 1 && (
@@ -298,19 +298,23 @@ const weekdayFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'short' })
 
 /** Recetas en pequeño: sugerencia del día y un carrusel compacto. */
 function RecipesBlock({ recipes, aiAvailable }: { recipes: Recipe[]; aiAvailable: boolean }) {
-  const [seed, setSeed] = useState(() => Math.random())
+  const [seed] = useState(() => Math.random())
+  const [pickId, setPickId] = useState<string | null>(null)
   const newPath = aiAvailable ? paths.recipeAi : paths.recipeNew
 
   const latest = useMemo(
     () => [...recipes].sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt).slice(0, 10),
     [recipes],
   )
-  const suggestion = useMemo(() => {
-    if (!recipes.length) return null
-    const favs = recipes.filter((r) => r.favorite)
-    const pool = favs.length >= 3 ? favs : recipes
-    return pool[Math.floor(seed * pool.length) % pool.length]
-  }, [recipes, seed])
+  const pool = useMemo(() => mealPool(recipes), [recipes])
+  const suggestion = pool.length
+    ? (pool.find((r) => r.id === pickId) ?? pool[Math.floor(seed * pool.length) % pool.length])
+    : null
+  // El dado siempre propone otra distinta.
+  const roll = () => {
+    const others = pool.filter((r) => r.id !== suggestion?.id)
+    if (others.length) setPickId(others[Math.floor(Math.random() * others.length)].id)
+  }
 
   return (
     <section className="home-block home-recipes">
@@ -335,12 +339,21 @@ function RecipesBlock({ recipes, aiAvailable }: { recipes: Recipe[]; aiAvailable
               </span>
             </span>
           </button>
-          {recipes.length > 1 && (
-            <button className="icon-btn today-dice" onClick={() => setSeed(Math.random())} aria-label="Otra sugerencia">
+          {pool.length > 1 && (
+            <button className="icon-btn today-dice" onClick={roll} aria-label="Otra sugerencia">
               <Icon name="dice" size={20} />
             </button>
           )}
         </div>
+      ) : recipes.length ? (
+        <button className="card today-card today-empty" onClick={() => switchTab(paths.recipes)}>
+          <span className="today-thumb tint-peach">🎲</span>
+          <span className="today-text">
+            <strong>¿Qué cocinamos hoy?</strong>
+            <span className="muted small">Poned la etiqueta “Comida” o “Cena” a vuestros platos y aquí os propondremos uno.</span>
+          </span>
+          <Icon name="chevron" size={18} className="muted" />
+        </button>
       ) : (
         <button className="card today-card today-empty" onClick={() => navigate(newPath)}>
           <span className="today-thumb tint-peach">🧑‍🍳</span>

@@ -27,6 +27,7 @@ export function ShoppingList() {
   const viewingPhoto = usePhoto(viewing?.photo)
   const closeViewer = useCallback(() => setViewing(null), [])
   const [manage, setManage] = useState<ManageTab | null>(null)
+  const [manageList, setManageList] = useState<string | undefined>()
   const config = useShopConfig()
   const activeList = config.lists.find((l) => l.id === config.activeListId)!
 
@@ -44,12 +45,15 @@ export function ShoppingList() {
     [listItems],
   )
 
+  const aisles = config.categoriesOf(config.activeListId)
+  const grouped = groupByCategory && aisles.length > 0
+
   const groups = useMemo(() => {
-    if (!groupByCategory) return [{ id: 'all', label: '', emoji: '' as string | undefined, items: pending }]
-    return config.categories
-      .map((c) => ({ ...c, items: pending.filter((i) => config.categoryOf(i.category).id === c.id) }))
+    if (!grouped) return [{ id: 'all', label: '', emoji: '' as string | undefined, items: pending }]
+    return aisles
+      .map((c) => ({ ...c, items: pending.filter((i) => config.categoryOf(i.category, config.activeListId).id === c.id) }))
       .filter((g) => g.items.length)
-  }, [pending, groupByCategory, config])
+  }, [pending, grouped, aisles, config])
 
   const recipeTitle = (id?: string) => (id ? recipes.find((r) => r.id === id)?.title : undefined)
   const total = listItems.length
@@ -110,7 +114,7 @@ export function ShoppingList() {
       }
       right={
         <>
-          {total > 0 && (
+          {total > 0 && aisles.length > 0 && (
             <button
               className="nav-btn nav-icon"
               onClick={() => setPrefs({ groupByCategory: !groupByCategory })}
@@ -220,11 +224,21 @@ export function ShoppingList() {
       )}
 
       <PhotoViewer src={viewing ? viewingPhoto : null} alt={viewing?.name} onClose={closeViewer} />
-      <ShoppingManageSheet open={manage !== null} tab={manage ?? 'lists'} onTabChange={setManage} onClose={() => setManage(null)} />
+      <ShoppingManageSheet
+        open={manage !== null}
+        tab={manage ?? 'lists'}
+        listId={manageList}
+        onTabChange={setManage}
+        onClose={() => {
+          setManage(null)
+          setManageList(undefined)
+        }}
+      />
       <ItemSheet
         item={editing}
-        onManage={() => {
+        onManage={(listId) => {
           setEditing(null)
+          setManageList(listId)
           setManage('categories')
         }}
         onClose={() => setEditing(null)}

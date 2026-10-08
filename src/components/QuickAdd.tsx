@@ -17,7 +17,10 @@ export function QuickAdd({ autoFocus, compact }: { autoFocus?: boolean; compact?
   const config = useShopConfig()
 
   const parsed = text.trim() ? parseItemInput(text) : null
-  const category = parsed ? config.categoryOf(config.guess(parsed.name)) : null
+  const category =
+    parsed && config.hasAisles(config.activeListId)
+      ? config.categoryOf(config.guess(parsed.name), config.activeListId)
+      : null
 
   const pendingNames = useMemo(
     () => new Set(items.filter((i) => !i.checked && config.listOf(i) === config.activeListId).map((i) => normalize(i.name))),

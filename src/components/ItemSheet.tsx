@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { normalize } from '../lib/categories'
 import { useData } from '../lib/data'
 import { savePendingPhoto, type PendingPhoto } from '../lib/photos'
-import { useShopConfig } from '../lib/shopConfig'
+import { OTHER_CATEGORY, useShopConfig } from '../lib/shopConfig'
 import type { PhotoRef, ShoppingItem } from '../lib/types'
 import { Icon } from './Icon'
 import { PhotoInput } from './Photo'
@@ -14,8 +14,8 @@ interface Props {
   onClose: () => void
   onSave: (patch: Partial<ShoppingItem>) => void
   onDelete: () => void
-  /** Abre la gestión de listas y pasillos. */
-  onManage?: () => void
+  /** Abre la gestión de los pasillos de una lista. */
+  onManage?: (listId: string) => void
 }
 
 export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) {
@@ -23,6 +23,8 @@ export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) 
   const [quantity, setQuantity] = useState('')
   const [category, setCategory] = useState('otros')
   const [listId, setListId] = useState('')
+  // Solo se aprende el pasillo si lo elige la persona (no al cambiar de lista).
+  const [picked, setPicked] = useState(false)
   const config = useShopConfig()
   const [photo, setPhoto] = useState<PhotoRef | undefined>()
   const [pending, setPending] = useState<PendingPhoto | null>(null)
@@ -34,13 +36,24 @@ export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) 
     if (item) {
       setName(item.name)
       setQuantity(item.quantity ?? '')
-      setCategory(config.categoryOf(item.category).id)
-      setListId(config.listOf(item))
+      const list = config.listOf(item)
+      setCategory(config.categoryOf(item.category, list).id)
+      setListId(list)
+      setPicked(false)
       setPhoto(item.photo)
       setPending(null)
     }
     // Solo al abrir otro producto; la configuración puede cambiar mientras tanto.
   }, [item])
+
+  const aisles = listId ? config.categoriesOf(listId) : []
+
+  const changeList = (id: string) => {
+    setListId(id)
+    // En la nueva lista, el pasillo que tenga allí (o el que toque).
+    const cats = config.categoriesOf(id)
+    if (!cats.some((c) => c.id === category)) setCategory(config.guess(name || item?.name || '', id))
+  }
 
   const save = async () => {
     if (!name.trim() || !item) return
@@ -48,9 +61,10 @@ export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) 
     try {
       const nextPhoto = pending ? await savePendingPhoto(store, pending) : photo
       if (item.photo && item.photo.id !== nextPhoto?.id) void store.deletePhoto(item.photo.id).catch(console.error)
-      onSave({ name: name.trim(), quantity: quantity.trim() || undefined, category, listId, photo: nextPhoto })
+      const finalCategory = aisles.length ? category : OTHER_CATEGORY
+      onSave({ name: name.trim(), quantity: quantity.trim() || undefined, category: finalCategory, listId, photo: nextPhoto })
       // Si se corrige el pasillo, se recuerda para la próxima vez que se añada.
-      if (category !== item.category) {
+      if (picked && aisles.length && category !== item.category) {
         void store.updateShopping({ learned: { [normalize(name.trim())]: category } }).catch(console.error)
       }
       onClose()
@@ -140,7 +154,7 @@ export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) 
                   type="button"
                   key={l.id}
                   className={`chip ${listId === l.id ? 'is-selected' : ''}`}
-                  onClick={() => setListId(l.id)}
+                  onClick={() => changeList(l.id)}
                 >
                   {l.emoji && <span>{l.emoji}</span>} {l.name}
                 </button>
@@ -148,26 +162,33 @@ export function ItemSheet({ item, onClose, onSave, onDelete, onManage }: Props) 
             </div>
           </>
         )}
-        <div className="section-label section-label-row">
-          Pasillo
-          {onManage && (
-            <button type="button" className="link-btn" onClick={onManage}>
-              Editar pasillos
-            </button>
-          )}
-        </div>
-        <div className="chip-grid">
-          {config.categories.map((c) => (
-            <button
-              type="button"
-              key={c.id}
-              className={`chip ${category === c.id ? 'is-selected' : ''}`}
-              onClick={() => setCategory(c.id)}
-            >
-              <span>{c.emoji}</span> {c.label}
-            </button>
-          ))}
-        </div>
+        {aisles.length > 0 && (
+          <>
+            <div className="section-label section-label-row">
+              Pasillo
+              {onManage && (
+                <button type="button" className="link-btn" onClick={() => onManage(listId)}>
+                  Editar pasillos
+                </button>
+              )}
+            </div>
+            <div className="chip-grid">
+              {aisles.map((c) => (
+                <button
+                  type="button"
+                  key={c.id}
+                  className={`chip ${category === c.id ? 'is-selected' : ''}`}
+                  onClick={() => {
+                    setCategory(c.id)
+                    setPicked(true)
+                  }}
+                >
+                  <span>{c.emoji}</span> {c.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <button type="submit" hidden />
       </form>
     </Sheet>

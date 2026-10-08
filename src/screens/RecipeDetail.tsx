@@ -9,7 +9,9 @@ import { normalize } from '../lib/categories'
 import { useData } from '../lib/data'
 import { usePhoto } from '../lib/photos'
 import { formatTime, parseIngredient, recipeTint } from '../lib/recipes'
+import { getPrefs, setPrefs } from '../lib/prefs'
 import { goBack, navigate, paths } from '../lib/router'
+import { useShopConfig } from '../lib/shopConfig'
 import { useShoppingActions } from '../lib/shopping'
 import type { Recipe } from '../lib/types'
 
@@ -181,13 +183,37 @@ function RecipeView({ recipe, onToggleFav }: { recipe: Recipe; onToggleFav: () =
 function AddToListSheet({ recipe, open, onClose }: { recipe: Recipe; open: boolean; onClose: () => void }) {
   const { items } = useData()
   const { addMany } = useShoppingActions()
+  const config = useShopConfig()
   const toast = useToast()
   const parsed = useMemo(() => recipe.ingredients.map(parseIngredient), [recipe.ingredients])
-  const inList = useMemo(() => new Set(items.filter((i) => !i.checked).map((i) => normalize(i.name))), [items])
+  const [listId, setListId] = useState(config.defaultList)
+  const inList = useMemo(
+    () => new Set(items.filter((i) => !i.checked && config.listOf(i) === listId).map((i) => normalize(i.name))),
+    [items, config, listId],
+  )
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const list = config.lists.find((l) => l.id === listId)
+
+  /** La última lista usada para recetas o, si no, la primera con pasillos (el súper). */
+  const initialList = () => {
+    const last = getPrefs().recipeList
+    if (last && config.lists.some((l) => l.id === last)) return last
+    return config.lists.find((l) => l.categories?.length)?.id ?? config.defaultList
+  }
+
+  const pendingIn = (id: string) =>
+    new Set(items.filter((i) => !i.checked && config.listOf(i) === id).map((i) => normalize(i.name)))
+
+  const preselect = (id: string) => {
+    const there = pendingIn(id)
+    setSelected(new Set(parsed.map((_, i) => i).filter((i) => !there.has(normalize(parsed[i].name)))))
+  }
 
   useEffect(() => {
-    if (open) setSelected(new Set(parsed.map((_, i) => i).filter((i) => !inList.has(normalize(parsed[i].name)))))
+    if (!open) return
+    const id = initialList()
+    setListId(id)
+    preselect(id)
     // Solo al abrir: no queremos resetear la selección si la lista cambia mientras tanto.
   }, [open])
 
@@ -201,10 +227,20 @@ function AddToListSheet({ recipe, open, onClose }: { recipe: Recipe; open: boole
 
   const submit = async () => {
     const entries = [...selected].sort((a, b) => a - b).map((i) => ({ ...parsed[i], recipeId: recipe.id }))
-    const added = await addMany(entries)
+    const added = await addMany(entries, listId)
+    setPrefs({ recipeList: listId })
     onClose()
-    toast(added ? `${added} producto${added === 1 ? '' : 's'} añadido${added === 1 ? '' : 's'} a la compra` : 'Ya estaba todo en la lista', {
-      action: added ? { label: 'Ver lista', onClick: () => navigate(paths.list) } : undefined,
+    const where = list ? `a ${list.name}` : 'a la compra'
+    toast(added ? `${added} producto${added === 1 ? '' : 's'} añadido${added === 1 ? '' : 's'} ${where}` : 'Ya estaba todo en la lista', {
+      action: added
+        ? {
+            label: 'Ver lista',
+            onClick: () => {
+              setPrefs({ activeList: listId })
+              navigate(paths.list)
+            },
+          }
+        : undefined,
     })
   }
 
@@ -215,10 +251,26 @@ function AddToListSheet({ recipe, open, onClose }: { recipe: Recipe; open: boole
       title="¿Qué os falta?"
       footer={
         <button className="btn btn-primary btn-block btn-list-solid" disabled={!selected.size} onClick={() => void submit()}>
-          Añadir {selected.size || ''} a la compra
+          Añadir {selected.size || ''} a {config.lists.length > 1 && list ? list.name : 'la compra'}
         </button>
       }
     >
+      {config.lists.length > 1 && (
+        <>
+          <div className="section-label">¿A qué lista?</div>
+          <div className="chip-grid chip-grid-lists">
+            {config.lists.map((l) => (
+              <button
+                key={l.id}
+                className={`chip ${listId === l.id ? 'is-selected' : ''}`}
+                onClick={() => setListId(l.id)}
+              >
+                {l.emoji && <span>{l.emoji}</span>} {l.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <p className="muted small sheet-intro">Desmarca lo que ya tengáis en casa.</p>
       <div className="row-between">
         <button className="link-btn" onClick={() => setSelected(new Set(parsed.map((_, i) => i)))}>

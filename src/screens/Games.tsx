@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GoBoard } from '../components/GoBoard'
 import { GoHelp } from '../components/GoHelp'
+import { Icon } from '../components/Icon'
 import { Page } from '../components/Page'
 import { Segmented } from '../components/Segmented'
 import { ConfirmSheet, Sheet } from '../components/Sheet'
@@ -38,20 +39,27 @@ export function Games() {
       return toast(game.status === 'playing' ? `Le toca a ${go.nameOf(go.turnUid!)}` : 'La partida ha terminado')
     const illegal: IllegalReason | null = go.check(idx)
     if (illegal) return toast(ILLEGAL_TEXT[illegal])
-    if (ghost === idx) {
-      setGhost(null)
-      void run(go.play(idx))
-    } else setGhost(idx)
+    // Solo se marca: la piedra se pone con "Confirmar ficha".
+    setGhost(idx)
   }
 
-  const helpButton = (
-    <button className="nav-btn nav-icon help-btn" onClick={() => setHelp(true)} aria-label="Cómo se juega">
-      ?
-    </button>
+  const inProgress = !!game && game.status !== 'finished'
+  const askNewGame = () =>
+    inProgress ? toast('Primero terminad la partida actual (o rendíos) para empezar otra.') : setNewOpen(true)
+
+  const headerButtons = (
+    <>
+      <button className="nav-btn nav-icon help-btn" onClick={askNewGame} aria-label="Nueva partida">
+        <Icon name="plus" size={18} strokeWidth={2.6} />
+      </button>
+      <button className="nav-btn nav-icon help-btn" onClick={() => setHelp(true)} aria-label="Cómo se juega">
+        ?
+      </button>
+    </>
   )
 
   return (
-    <Page title="Go" className="theme-games" right={helpButton} subtitle={<Scoreboard go={go} />}>
+    <Page title="Go" className="theme-games" right={headerButtons} subtitle={<Scoreboard go={go} />}>
       {!game ? (
         <section className="go-intro card">
           <div className="go-intro-art" aria-hidden>
@@ -94,11 +102,19 @@ export function Games() {
             </span>
           </div>
 
+          {game.status === 'playing' && go.canPlay && (
+            <p className="go-hint">
+              {ghost === null
+                ? 'Toca un cruce para elegir dónde poner tu piedra.'
+                : 'Puedes tocar otro cruce para cambiarla. Cuando lo tengas claro, confirma.'}
+            </p>
+          )}
+
           {game.status === 'playing' && (
-            <div className="go-actions">
+            <div className={`go-actions ${ghost !== null ? 'is-confirming' : ''}`}>
               {ghost !== null ? (
                 <>
-                  <button className="btn btn-ghost" onClick={() => setGhost(null)}>
+                  <button className="btn btn-elev" onClick={() => setGhost(null)}>
                     Cancelar
                   </button>
                   <button
@@ -109,7 +125,7 @@ export function Games() {
                       void run(go.play(idx))
                     }}
                   >
-                    Colocar aquí
+                    Confirmar ficha
                   </button>
                 </>
               ) : (
@@ -153,11 +169,6 @@ export function Games() {
               </button>
             </div>
           )}
-          {game.status !== 'finished' && (
-            <button className="link-btn center go-new-link" onClick={() => setNewOpen(true)}>
-              Empezar otra partida
-            </button>
-          )}
         </>
       )}
 
@@ -166,7 +177,6 @@ export function Games() {
         open={newOpen}
         onClose={() => setNewOpen(false)}
         partnerName={go.partner?.name}
-        replacing={!!game && game.status !== 'finished'}
         onStart={(opts) => {
           setNewOpen(false)
           void run(go.newGame(opts))
@@ -272,13 +282,11 @@ function NewGameSheet({
   onClose,
   onStart,
   partnerName,
-  replacing,
 }: {
   open: boolean
   onClose: () => void
   onStart: (opts: { size: GoSize; myColor: Color | 'random'; hotseat: boolean }) => void
   partnerName?: string
-  replacing: boolean
 }) {
   const [size, setSize] = useState<'9' | '13' | '19'>('9')
   const [color, setColor] = useState<'black' | 'white' | 'random'>('random')
@@ -305,7 +313,7 @@ function NewGameSheet({
             })
           }
         >
-          {replacing ? 'Empezar (se abandona la actual)' : 'Empezar'}
+          Empezar
         </button>
       }
     >

@@ -4229,7 +4229,10 @@ a {
 }
 
 .go-ghost {
-  opacity: 0.5;
+  opacity: 0.7;
+  stroke: var(--wood);
+  stroke-width: 0.6;
+  stroke-dasharray: 1.2 0.9;
   pointer-events: none;
 }
 
@@ -4318,9 +4321,44 @@ a {
   margin-top: 10px;
 }
 
-.go-new-link {
-  margin-top: 14px;
-  font-size: 14px;
+.go-actions.is-confirming {
+  position: sticky;
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 10px);
+  z-index: 5;
+  animation: go-pop 0.18s ease-out;
+}
+
+.go-actions.is-confirming .btn {
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-elev {
+  background: var(--bg-elev);
+  color: var(--text-2);
+}
+
+@keyframes go-pop {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .go-actions.is-confirming {
+    animation: none;
+  }
+}
+
+.go-hint {
+  margin: 12px 2px 0;
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.help-btn + .help-btn {
+  margin-left: 8px;
 }
 
 .go-opt-hint {
@@ -4442,4 +4480,28 @@ a {
 
 .go-label-bg {
   fill: #dcb36f;
+}
+
+/* Pasillos de cada lista */
+.manage-list-pick {
+  margin: 14px calc(-1 * var(--gutter)) 0;
+}
+
+.manage-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.manage-footer-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.manage-footer-links .link-btn {
+  font-size: 14px;
+  color: var(--text-2);
 }

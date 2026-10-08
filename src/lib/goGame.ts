@@ -38,8 +38,9 @@ export function useGo() {
     nameOf,
     ...derived,
 
-    /** Empieza una partida nueva (la anterior se descarta). */
-    newGame(opts: { size: GoSize; myColor: Color | 'random'; hotseat: boolean }) {
+    /** Empieza una partida nueva (solo si no hay otra a medias). */
+    async newGame(opts: { size: GoSize; myColor: Color | 'random'; hotseat: boolean }) {
+      if (game && game.status !== 'finished') return
       const color = opts.myColor === 'random' ? (Math.random() < 0.5 ? BLACK : WHITE) : opts.myColor
       const other = opts.hotseat || !partner ? me : partner.id
       const now = Date.now()

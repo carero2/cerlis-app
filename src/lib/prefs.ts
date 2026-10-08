@@ -11,6 +11,8 @@ export interface Prefs {
   hideHomeTip: boolean
   /** Lista de la compra abierta en este móvil. */
   activeList?: string
+  /** Última lista a la que se mandaron ingredientes de una receta. */
+  recipeList?: string
 }
 
 const KEY = 'cerlis:prefs'

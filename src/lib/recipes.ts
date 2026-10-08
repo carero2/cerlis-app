@@ -8,7 +8,21 @@ export const FOOD_EMOJIS = [
   '🍋', '🍎', '🥤', '🍹', '☕', '🍵',
 ]
 
-export const SUGGESTED_TAGS = ['Rápida', 'Cena', 'Comida', 'Desayuno', 'Postre', 'Vegetariana', 'Batch cooking', 'Para invitados']
+export const SUGGESTED_TAGS = ['Rápida', 'Cena', 'Comida', 'Desayuno', 'Postre', 'Snack', 'Vegetariana', 'Batch cooking', 'Para invitados']
+
+const tagKey = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+const MAIN_TAGS = new Set(['comida', 'cena', 'almuerzo'])
+
+/**
+ * Recetas para "¿Qué cocinamos hoy?": solo las etiquetadas como comida o
+ * cena (nada de postres, desayunos ni snacks). Si hay suficientes
+ * favoritas entre ellas, solo las favoritas.
+ */
+export function mealPool(recipes: Recipe[]): Recipe[] {
+  const mains = recipes.filter((r) => r.tags.some((t) => MAIN_TAGS.has(tagKey(t))))
+  const favs = mains.filter((r) => r.favorite)
+  return favs.length >= 3 ? favs : mains
+}
 
 // Fondos suaves para las tarjetas, derivados del título.
 const TINTS = ['tint-peach', 'tint-mint', 'tint-sky', 'tint-lilac', 'tint-butter', 'tint-rose', 'tint-sage']

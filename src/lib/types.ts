@@ -71,6 +71,11 @@ export interface ShopList {
   id: string
   name: string
   emoji?: string
+  /**
+   * Pasillos propios de la lista ([] = sin pasillos, todo junto). Si falta
+   * (datos antiguos), la lista principal usa los pasillos generales.
+   */
+  categories?: CategoryDef[]
 }
 
 /** Pasillo o categoría de productos. */
@@ -83,6 +88,7 @@ export interface CategoryDef {
 /** Configuración compartida de la compra (settings/shopping). */
 export interface ShoppingConfig {
   lists?: ShopList[]
+  /** Pasillos de antes de que cada lista tuviera los suyos (los hereda la lista principal). */
   categories?: CategoryDef[]
   /** Pasillo aprendido por producto (nombre normalizado → id de pasillo). */
   learned?: Record<string, string>

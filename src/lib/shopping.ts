@@ -86,7 +86,7 @@ export function useShoppingActions() {
           name,
           quantity,
           photo,
-          category: config.guess(name),
+          category: config.guess(name, listId),
           listId,
           addedBy: getPrefs().name || undefined,
         },
@@ -110,7 +110,7 @@ export function useShoppingActions() {
       const toCreate = fresh.filter((e) => !reactivated.has(normalize(e.name)))
       if (toCreate.length) {
         await store.addItems(
-          toCreate.map((e) => ({ ...e, category: config.guess(e.name), listId, addedBy: author })),
+          toCreate.map((e) => ({ ...e, category: config.guess(e.name, listId), listId, addedBy: author })),
         )
       }
       remember(entries.map((e) => e.name))
