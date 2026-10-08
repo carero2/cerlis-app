@@ -18,7 +18,7 @@ import { ConfirmSheet, Sheet } from './Sheet'
 export function FirebaseConnectSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [text, setText] = useState('')
   const [appCheckKey, setAppCheckKey] = useState('')
-  const [provider, setProvider] = useState<'v3' | 'enterprise'>('v3')
+  const [provider, setProvider] = useState<'v3' | 'enterprise'>('enterprise')
   const [advanced, setAdvanced] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
 
@@ -26,7 +26,7 @@ export function FirebaseConnectSheet({ open, onClose }: { open: boolean; onClose
     if (!open) return
     setText('')
     setAppCheckKey(customConfig?.appCheckKey ?? '')
-    setProvider(customConfig?.appCheckProvider ?? 'v3')
+    setProvider(customConfig?.appCheckProvider ?? 'enterprise')
     setAdvanced(!!customConfig?.appCheckKey)
   }, [open])
 
@@ -35,7 +35,7 @@ export function FirebaseConnectSheet({ open, onClose }: { open: boolean; onClose
   const base: FirebaseConfig | null = parsed ?? (text.trim() ? null : customConfig)
   const changed =
     !!parsed ||
-    (!!customConfig && (appCheckKey.trim() !== (customConfig.appCheckKey ?? '') || provider !== (customConfig.appCheckProvider ?? 'v3')))
+    (!!customConfig && (appCheckKey.trim() !== (customConfig.appCheckKey ?? '') || provider !== (customConfig.appCheckProvider ?? 'enterprise')))
 
   const connect = () => {
     if (!base) return
@@ -115,7 +115,7 @@ export function FirebaseConnectSheet({ open, onClose }: { open: boolean; onClose
       {advanced && (
         <div className="fb-adv">
           <label className="field card">
-            <span>Clave de sitio de reCAPTCHA</span>
+            <span>Clave de sitio (Fraud Defense / reCAPTCHA)</span>
             <input
               value={appCheckKey}
               onChange={(e) => setAppCheckKey(e.target.value)}
@@ -129,8 +129,8 @@ export function FirebaseConnectSheet({ open, onClose }: { open: boolean; onClose
             value={provider}
             onChange={setProvider}
             options={[
-              { value: 'v3', label: 'reCAPTCHA v3' },
-              { value: 'enterprise', label: 'Enterprise' },
+              { value: 'enterprise', label: 'Fraud Defense' },
+              { value: 'v3', label: 'reCAPTCHA v3 clásico' },
             ]}
           />
           <p className="muted small">Solo si lo habéis activado en Firebase → App Check. Si no, dejadlo vacío.</p>

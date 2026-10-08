@@ -48,9 +48,9 @@ function init(config: FirebaseConfig) {
       try {
         initializeAppCheck(app, {
           provider:
-            config.appCheckProvider === 'enterprise'
-              ? new ReCaptchaEnterpriseProvider(config.appCheckKey)
-              : new ReCaptchaV3Provider(config.appCheckKey),
+            config.appCheckProvider === 'v3'
+              ? new ReCaptchaV3Provider(config.appCheckKey)
+              : new ReCaptchaEnterpriseProvider(config.appCheckKey),
           isTokenAutoRefreshEnabled: true,
         })
       } catch (e) {

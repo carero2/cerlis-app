@@ -80,9 +80,10 @@ escribir nada.
 - Las reglas solo dejan pasar a las cuentas de Google de la lista, con el
   correo verificado.
 - Para que nadie gaste vuestro cupo de IA con la clave, activad **App Check**
-  (reCAPTCHA) y poned la clave de sitio en `.env.production`
-  (`VITE_APPCHECK_SITE_KEY`, y `VITE_APPCHECK_PROVIDER=enterprise` si es una
-  clave de reCAPTCHA Enterprise). Sin esa línea la app funciona igual.
+  con una clave de sitio de **Google Cloud Fraud Defense** (antes reCAPTCHA
+  Enterprise) y ponedla en `.env.production` (`VITE_APPCHECK_SITE_KEY`; solo
+  si fuera una clave antigua de reCAPTCHA v3, añadid
+  `VITE_APPCHECK_PROVIDER=v3`). Sin esa línea la app funciona igual.
 
 ### Otra pareja con la misma app
 

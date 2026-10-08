@@ -7,7 +7,7 @@ export interface FirebaseConfig {
   appId: string
   /** Clave de sitio de reCAPTCHA para App Check (opcional, es pública). */
   appCheckKey?: string
-  /** Tipo de clave de reCAPTCHA: v3 (por defecto) o Enterprise. */
+  /** Tipo de clave: Fraud Defense / reCAPTCHA Enterprise (por defecto) o reCAPTCHA v3 clásico. */
   appCheckProvider?: 'v3' | 'enterprise'
 }
 
@@ -24,7 +24,7 @@ export const builtInConfig: FirebaseConfig | null =
         messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || undefined,
         appId: env.VITE_FIREBASE_APP_ID,
         appCheckKey: env.VITE_APPCHECK_SITE_KEY || undefined,
-        appCheckProvider: env.VITE_APPCHECK_PROVIDER === 'enterprise' ? 'enterprise' : 'v3',
+        appCheckProvider: env.VITE_APPCHECK_PROVIDER === 'v3' ? 'v3' : 'enterprise',
       }
     : null
 
