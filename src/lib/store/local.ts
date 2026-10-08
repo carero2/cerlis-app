@@ -1,5 +1,5 @@
 import { uid } from '../ids'
-import type { CalendarEvent, GoState, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem } from '../types'
+import type { CalendarEvent, GameId, GameStates, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem } from '../types'
 import type { DataStore } from './types'
 
 const ITEMS_KEY = 'cerlis:items'
@@ -8,7 +8,8 @@ const PHOTO_PREFIX = 'cerlis:photo:'
 const HOME_KEY = 'cerlis:home'
 const EVENTS_KEY = 'cerlis:events'
 const SHOPPING_KEY = 'cerlis:shopping'
-const GO_KEY = 'cerlis:go'
+const GAME_IDS: GameId[] = ['go', 'jaipur', 'codigo']
+const gameKey = (id: GameId) => `cerlis:${id}`
 
 function readHome(): HomeSettings {
   try {
@@ -45,15 +46,16 @@ export function createLocalStore(): DataStore {
     }
   }
   let shopping = readShopping()
-  const goListeners = new Set<(state: GoState) => void>()
-  const readGo = (): GoState => {
+  const gameListeners = new Map<GameId, Set<(state: never) => void>>(GAME_IDS.map((id) => [id, new Set()]))
+  const readGame = (id: GameId): object => {
     try {
-      return JSON.parse(localStorage.getItem(GO_KEY) ?? '{}') as GoState
+      return JSON.parse(localStorage.getItem(gameKey(id)) ?? '{}') as object
     } catch {
       return {}
     }
   }
-  let go = readGo()
+  const games = new Map<GameId, object>(GAME_IDS.map((id) => [id, readGame(id)]))
+  const emitGame = (id: GameId) => gameListeners.get(id)!.forEach((cb) => (cb as (s: object) => void)(games.get(id)!))
   let events = read<CalendarEvent>(EVENTS_KEY)
   const saveEvents = (next: CalendarEvent[]) => {
     events = next
@@ -92,9 +94,10 @@ export function createLocalStore(): DataStore {
     } else if (e.key === SHOPPING_KEY) {
       shopping = readShopping()
       shoppingListeners.forEach((cb) => cb(shopping))
-    } else if (e.key === GO_KEY) {
-      go = readGo()
-      goListeners.forEach((cb) => cb(go))
+    } else if (GAME_IDS.some((id) => gameKey(id) === e.key)) {
+      const id = GAME_IDS.find((g) => gameKey(g) === e.key)!
+      games.set(id, readGame(id))
+      emitGame(id)
     } else if (e.key === HOME_KEY) {
       home = readHome()
       homeListeners.forEach((cb) => cb(home))
@@ -180,15 +183,16 @@ export function createLocalStore(): DataStore {
       shoppingListeners.forEach((cb) => cb(shopping))
     },
 
-    subscribeGo(cb) {
-      goListeners.add(cb)
-      cb(go)
-      return () => goListeners.delete(cb)
+    subscribeGame<K extends GameId>(id: K, cb: (state: GameStates[K]) => void) {
+      const set = gameListeners.get(id)!
+      set.add(cb as (s: never) => void)
+      cb(games.get(id) as GameStates[K])
+      return () => set.delete(cb as (s: never) => void)
     },
-    async saveGo(state) {
-      go = JSON.parse(JSON.stringify(state)) as GoState
-      localStorage.setItem(GO_KEY, JSON.stringify(go))
-      goListeners.forEach((cb) => cb(go))
+    async saveGame(id, state) {
+      games.set(id, JSON.parse(JSON.stringify(state)) as object)
+      localStorage.setItem(gameKey(id), JSON.stringify(state))
+      emitGame(id)
     },
 
     subscribeHome(cb) {
@@ -232,7 +236,7 @@ export function createLocalStore(): DataStore {
       homeListeners.clear()
       eventListeners.clear()
       shoppingListeners.clear()
-      goListeners.clear()
+      gameListeners.forEach((s) => s.clear())
     },
   }
 }

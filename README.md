@@ -21,12 +21,16 @@ app en el iPhone (Safari → Compartir → **Añadir a pantalla de inicio**).
   anuales (cumpleaños, aniversarios) y notas. Cada plan es de uno de los
   dos o de ambos, con su color (cada uno elige el suyo en Ajustes). Los
   próximos salen en Inicio.
-- **Juegos**: partida de **Go** por turnos entre los dos (9×9, 13×13 o
-  19×19): cada uno mueve desde su móvil cuando le toca y la pestaña e Inicio
-  avisan de que es tu turno. También se puede jugar en un solo móvil. La app
-  impide jugadas ilegales (suicidio, ko), cuenta capturas y hace el recuento
-  final; lleva el marcador de victorias. El botón **?** explica las reglas
-  con diagramas para quien no ha jugado nunca.
+- **Juegos** por turnos entre los dos, cada uno desde su móvil (la pestaña
+  e Inicio avisan cuando te toca). Cada juego tiene un **?** con las reglas
+  explicadas y un **+** para empezar otra partida cuando la actual termina:
+  - **Go** (9×9, 13×13 o 19×19, también en un solo móvil): impide jugadas
+    ilegales (suicidio, ko), cuenta capturas y hace el recuento final.
+  - **Jaipur** (comercio, competitivo): mercado, mano oculta, camellos,
+    fichas que bajan de valor, bonus y dos rondas ganadas para vencer.
+  - **Código secreto** (cooperativo, al estilo Dúo): 25 palabras, cada uno
+    con su clave de agentes y asesinos, pistas de una palabra, 9 turnos y
+    muerte súbita.
 - **Ajustes**: tu nombre, foto de los dos, mensaje y cuenta atrás para
   Inicio (opcionales y compartidos), tema y copia de seguridad.
 
@@ -75,6 +79,19 @@ escribir nada.
   proyecto de Firebase, no en GitHub: cambiar el repositorio no las cambia.
 - Las reglas solo dejan pasar a las cuentas de Google de la lista, con el
   correo verificado.
+- Para que nadie gaste vuestro cupo de IA con la clave, activad **App Check**
+  (reCAPTCHA) y poned la clave de sitio en `.env.production`
+  (`VITE_APPCHECK_SITE_KEY`, y `VITE_APPCHECK_PROVIDER=enterprise` si es una
+  clave de reCAPTCHA Enterprise). Sin esa línea la app funciona igual.
+
+### Otra pareja con la misma app
+
+Otra pareja puede usar esta misma web con **su propio Firebase**: en la
+pantalla de inicio de sesión (o en Ajustes → Conexión) pegan su
+`firebaseConfig`. Se guarda solo en ese móvil y nunca entra en el
+repositorio, así que reciben las mismas actualizaciones con sus propios
+datos. En su Firebase tienen que publicar las reglas con sus correos,
+activar Google y añadir el dominio de la web en *Dominios autorizados*.
 
 ## Publicar en GitHub Pages
 

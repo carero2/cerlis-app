@@ -1,4 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { ReCaptchaEnterpriseProvider, ReCaptchaV3Provider, initializeAppCheck } from 'firebase/app-check'
 import {
   GoogleAuthProvider,
   getAuth,
@@ -26,7 +27,7 @@ import {
   type FirestoreError,
 } from 'firebase/firestore'
 import { uid } from '../ids'
-import type { CalendarEvent, GoState, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, GameId, GameStates, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from '../types'
 import type { DataStore } from './types'
 import type { FirebaseConfig } from './config'
 
@@ -41,6 +42,21 @@ function toUpdate(patch: object): Record<string, unknown> {
 function init(config: FirebaseConfig) {
   if (!app) {
     app = initializeApp(config)
+    // App Check: demuestra a Firebase que las peticiones (sobre todo las de
+    // la IA) salen de esta app y no de alguien que ha copiado la clave.
+    if (config.appCheckKey) {
+      try {
+        initializeAppCheck(app, {
+          provider:
+            config.appCheckProvider === 'enterprise'
+              ? new ReCaptchaEnterpriseProvider(config.appCheckKey)
+              : new ReCaptchaV3Provider(config.appCheckKey),
+          isTokenAutoRefreshEnabled: true,
+        })
+      } catch (e) {
+        console.error('App Check no se ha podido iniciar', e)
+      }
+    }
     db = initializeFirestore(app, {
       // Caché persistente: la lista funciona sin cobertura en el súper y
       // sincroniza en cuanto vuelve la conexión.
@@ -103,8 +119,8 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
   const homeDoc = doc(db, 'settings', 'home')
   // Listas (tiendas), pasillos y pasillos aprendidos, compartidos.
   const shoppingDoc = doc(db, 'settings', 'shopping')
-  // Partida de Go en curso y marcador.
-  const goDoc = doc(db, 'settings', 'go')
+  // Partida en curso y marcador de cada juego: settings/go, settings/jaipur…
+  const gameDoc = (id: GameId) => doc(db, 'settings', id)
 
   const syncListeners = new Set<(s: SyncState) => void>()
   let sync: SyncState = navigator.onLine ? 'connecting' : 'offline'
@@ -233,14 +249,14 @@ export function createFirebaseStore(config: FirebaseConfig): DataStore {
       await setDoc(shoppingDoc, toUpdate(patch), { merge: true })
     },
 
-    subscribeGo(cb) {
-      return listenOptional('settings/go', (onFail) =>
-        onSnapshot(goDoc, (snap) => cb((snap.data() as GoState | undefined) ?? {}), onFail),
+    subscribeGame<K extends GameId>(id: K, cb: (state: GameStates[K]) => void) {
+      return listenOptional(`settings/${id}`, (onFail) =>
+        onSnapshot(gameDoc(id), (snap) => cb((snap.data() as GameStates[K] | undefined) ?? ({} as GameStates[K])), onFail),
       )
     },
-    async saveGo(state) {
+    async saveGame(id, state) {
       // Sin merge: así no quedan restos de la partida anterior.
-      await setDoc(goDoc, JSON.parse(JSON.stringify(state)) as GoState)
+      await setDoc(gameDoc(id), JSON.parse(JSON.stringify(state)) as object)
     },
 
     subscribeHome(cb) {

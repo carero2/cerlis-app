@@ -3,12 +3,15 @@ import { TabBar } from './components/TabBar'
 import { useAuth } from './lib/auth'
 import { DataProvider, useData } from './lib/data'
 import { useRegisterMember } from './lib/people'
-import { useMyGoTurn } from './lib/goGame'
+import { useMyGameTurns } from './lib/gameTurns'
 import { usePrefs } from './lib/prefs'
 import { routeTab, useRoute } from './lib/router'
 import { Calendar } from './screens/Calendar'
+import { CodigoScreen } from './screens/CodigoScreen'
 import { Games } from './screens/Games'
+import { GoScreen } from './screens/GoScreen'
 import { Home } from './screens/Home'
+import { JaipurScreen } from './screens/JaipurScreen'
 import { RecipeDetail } from './screens/RecipeDetail'
 import { RecipeEditor } from './screens/RecipeEditor'
 import { Recipes } from './screens/Recipes'
@@ -55,7 +58,7 @@ function Main() {
   const route = useRoute()
   const { items, ready, sync } = useData()
   useRegisterMember()
-  const myGoTurn = useMyGoTurn()
+  const gameTurns = useMyGameTurns()
   const pending = items.filter((i) => !i.checked).length
   const hideTabs = route.name === 'recipe-new' || route.name === 'recipe-edit'
 
@@ -86,6 +89,9 @@ function Main() {
       case 'games':
         screen = <Games />
         break
+      case 'game':
+        screen = route.game === 'go' ? <GoScreen /> : route.game === 'jaipur' ? <JaipurScreen /> : <CodigoScreen />
+        break
       case 'settings':
         screen = <Settings />
         break
@@ -95,10 +101,10 @@ function Main() {
 
   return (
     <div className={`app ${hideTabs ? 'no-tabs' : ''}`}>
-      <div className="screen" key={route.name + ('id' in route ? route.id : '')}>
+      <div className="screen" key={route.name + ('id' in route ? route.id : '') + ('game' in route ? route.game : '')}>
         {screen}
       </div>
-      {!hideTabs && <TabBar active={routeTab(route)} badge={pending} gameTurn={myGoTurn} />}
+      {!hideTabs && <TabBar active={routeTab(route)} badge={pending} gameTurn={gameTurns.pending.length > 0} />}
     </div>
   )
 }

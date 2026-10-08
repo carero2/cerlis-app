@@ -9,7 +9,8 @@ export type GoSize = GoGame['size']
 
 /** Estado derivado de la partida de Go compartida y acciones para jugarla. */
 export function useGo() {
-  const { go, store } = useData()
+  const { games, store } = useData()
+  const go = games.go
   const { me, people } = usePeople()
   const game = go.game
   const partner = people.find((p) => p.id !== me)
@@ -27,8 +28,7 @@ export function useGo() {
 
   const nameOf = (id: string) => (id === me ? 'Tú' : (people.find((p) => p.id === id)?.name ?? 'Tu pareja'))
 
-  const save = (next: GoGame) =>
-    store.saveGo({ ...go, game: { ...next, updatedAt: Date.now() } })
+  const save = (next: GoGame) => store.saveGame('go', { ...go, game: { ...next, updatedAt: Date.now() } })
 
   return {
     game,
@@ -44,7 +44,7 @@ export function useGo() {
       const color = opts.myColor === 'random' ? (Math.random() < 0.5 ? BLACK : WHITE) : opts.myColor
       const other = opts.hotseat || !partner ? me : partner.id
       const now = Date.now()
-      return store.saveGo({
+      return store.saveGame('go', {
         ...go,
         game: {
           id: uid(),
@@ -121,18 +121,18 @@ export function useGo() {
     const wins = { ...(go.wins ?? {}) }
     // En partidas en el mismo móvil no se lleva marcador.
     if (!next.hotseat) wins[winnerUid] = (wins[winnerUid] ?? 0) + 1
-    await store.saveGo({ game: { ...next, updatedAt: Date.now() }, wins })
+    await store.saveGame('go', { game: { ...next, updatedAt: Date.now() }, wins })
   }
 }
 
 /** ¿Le toca mover a quien usa este móvil? (para avisar en Inicio y en la pestaña). */
 export function useMyGoTurn(): boolean {
-  const { go } = useData()
+  const { games } = useData()
   const { me } = usePeople()
   return useMemo(() => {
-    const g = go.game
+    const g = games.go.game
     if (!g || g.hotseat || g.status !== 'playing') return false
     const turn = g.moves.length % 2 === 0 ? g.black : g.white
     return turn === me
-  }, [go.game, me])
+  }, [games.go.game, me])
 }

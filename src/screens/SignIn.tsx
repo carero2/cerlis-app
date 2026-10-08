@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { FirebaseConnectSheet } from '../components/FirebaseConnectSheet'
 import { useAuth, useUser } from '../lib/auth'
 
 const AUTH_ERRORS: Record<string, string> = {
@@ -32,6 +33,7 @@ export function SignIn() {
   const { signIn } = useAuth()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [connect, setConnect] = useState(false)
 
   const start = async () => {
     setBusy(true)
@@ -60,6 +62,10 @@ export function SignIn() {
         {busy ? 'Abriendo Google…' : 'Continuar con Google'}
       </button>
       <p className="muted small center">Solo las cuentas autorizadas pueden ver vuestros datos.</p>
+      <button className="link-btn center welcome-connect" onClick={() => setConnect(true)}>
+        ¿Tenéis vuestro propio Firebase?
+      </button>
+      <FirebaseConnectSheet open={connect} onClose={() => setConnect(false)} />
     </WelcomeLayout>
   )
 }
@@ -68,6 +74,7 @@ export function SignIn() {
 export function NoAccess() {
   const { signOut } = useAuth()
   const user = useUser()
+  const [connect, setConnect] = useState(false)
   return (
     <WelcomeLayout>
       <h1>Sin acceso 🔒</h1>
@@ -78,6 +85,10 @@ export function NoAccess() {
       <button className="btn btn-primary btn-block" onClick={() => void signOut()}>
         Usar otra cuenta
       </button>
+      <button className="link-btn center welcome-connect" onClick={() => setConnect(true)}>
+        ¿Tenéis vuestro propio Firebase?
+      </button>
+      <FirebaseConnectSheet open={connect} onClose={() => setConnect(false)} />
     </WelcomeLayout>
   )
 }

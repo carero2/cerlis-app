@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { firebaseConfig } from './store/config'
 import { createLocalStore } from './store/local'
 import type { DataStore } from './store/types'
-import type { CalendarEvent, GoState, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from './types'
+import type { CalendarEvent, GameStates, HomeSettings, Recipe, ShoppingConfig, ShoppingItem, SyncState } from './types'
 import { useUser } from './auth'
 
 interface DataContextValue {
@@ -12,7 +12,7 @@ interface DataContextValue {
   home: HomeSettings
   events: CalendarEvent[]
   shopping: ShoppingConfig
-  go: GoState
+  games: GameStates
   sync: SyncState
   /** true cuando ya llegó la primera tanda de datos. */
   ready: boolean
@@ -46,7 +46,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [home, setHome] = useState<HomeSettings>({})
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [shopping, setShopping] = useState<ShoppingConfig>({})
-  const [go, setGo] = useState<GoState>({})
+  const [games, setGames] = useState<GameStates>({ go: {}, jaipur: {}, codigo: {} })
   const [sync, setSync] = useState<SyncState>('connecting')
   const [loaded, setLoaded] = useState({ items: false, recipes: false, home: false })
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +101,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }),
       store.subscribeEvents(setEvents),
       store.subscribeShopping(setShopping),
-      store.subscribeGo(setGo),
+      store.subscribeGame('go', (go) => setGames((g) => ({ ...g, go }))),
+      store.subscribeGame('jaipur', (jaipur) => setGames((g) => ({ ...g, jaipur }))),
+      store.subscribeGame('codigo', (codigo) => setGames((g) => ({ ...g, codigo }))),
       store.subscribeSync(setSync),
     ]
     return () => offs.forEach((off) => off())
@@ -126,9 +128,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DataContextValue | null>(
     () =>
       store
-        ? { store, items, recipes, home, events, shopping, go, sync, ready: loaded.items && loaded.recipes, homeReady: loaded.home, releasePhotos }
+        ? { store, items, recipes, home, events, shopping, games, sync, ready: loaded.items && loaded.recipes, homeReady: loaded.home, releasePhotos }
         : null,
-    [store, items, recipes, home, events, shopping, go, sync, loaded, releasePhotos],
+    [store, items, recipes, home, events, shopping, games, sync, loaded, releasePhotos],
   )
 
   if (error) {

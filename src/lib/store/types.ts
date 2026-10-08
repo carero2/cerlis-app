@@ -1,4 +1,4 @@
-import type { CalendarEvent, EventDraft, GoState, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
+import type { CalendarEvent, EventDraft, GameId, GameStates, HomeSettings, NewItem, ShoppingConfig, Recipe, RecipeDraft, ShoppingItem, SyncState } from '../types'
 
 export type Unsubscribe = () => void
 
@@ -30,9 +30,10 @@ export interface DataStore {
   /** Sustituye los campos indicados; `learned` se fusiona. */
   updateShopping(patch: Partial<ShoppingConfig>): Promise<void>
 
-  subscribeGo(cb: (state: GoState) => void): Unsubscribe
+  /** Partida en curso y marcador de un juego (settings/<juego>). */
+  subscribeGame<K extends GameId>(id: K, cb: (state: GameStates[K]) => void): Unsubscribe
   /** Guarda el estado completo del juego (sustituye al anterior). */
-  saveGo(state: GoState): Promise<void>
+  saveGame<K extends GameId>(id: K, state: GameStates[K]): Promise<void>
 
   subscribeHome(cb: (home: HomeSettings) => void): Unsubscribe
   /** Un campo a `undefined` lo elimina. */

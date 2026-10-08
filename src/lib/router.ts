@@ -14,6 +14,7 @@ export type Route =
   | { name: 'recipe-edit'; id: string }
   | { name: 'calendar'; date?: string }
   | { name: 'games' }
+  | { name: 'game'; game: 'go' | 'jaipur' | 'codigo' }
   | { name: 'settings' }
 
 export type Tab = 'home' | 'list' | 'recipes' | 'calendar' | 'games' | 'settings'
@@ -31,6 +32,7 @@ function parse(hash: string): Route {
     case 'calendario':
       return { name: 'calendar', date: /^\d{4}-\d{2}-\d{2}$/.test(parts[1] ?? '') ? parts[1] : undefined }
     case 'juegos':
+      if (parts[1] === 'go' || parts[1] === 'jaipur' || parts[1] === 'codigo') return { name: 'game', game: parts[1] }
       return { name: 'games' }
     case 'ajustes':
       return { name: 'settings' }
@@ -51,6 +53,7 @@ export function routeTab(route: Route): Tab {
     case 'calendar':
       return 'calendar'
     case 'games':
+    case 'game':
       return 'games'
     case 'settings':
       return 'settings'
@@ -70,6 +73,7 @@ export const paths = {
   calendar: '/calendario',
   calendarDay: (date: string) => `/calendario/${date}`,
   games: '/juegos',
+  game: (id: 'go' | 'jaipur' | 'codigo') => `/juegos/${id}`,
   settings: '/ajustes',
 }
 

@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { FirebaseConnectSheet } from '../components/FirebaseConnectSheet'
 import { HomeSettingsCard } from '../components/HomeSettingsCard'
 import { Icon, type IconName } from '../components/Icon'
 import { Page } from '../components/Page'
@@ -10,6 +11,7 @@ import { useAuth, useUser } from '../lib/auth'
 import { useData } from '../lib/data'
 import { COLORS, COLOR_NAMES, setMyColor, useMyId } from '../lib/people'
 import { setPrefs, usePrefs, type ThemePref } from '../lib/prefs'
+import { cloudEnabled, customConfig, firebaseConfig } from '../lib/store/config'
 import type { ColorKey, Recipe } from '../lib/types'
 
 const isStandalone =
@@ -21,7 +23,7 @@ export function Settings() {
   const toast = useToast()
   const user = useUser()
   const { signOut } = useAuth()
-  const [sheet, setSheet] = useState<'backup' | 'signout' | null>(null)
+  const [sheet, setSheet] = useState<'backup' | 'signout' | 'firebase' | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const exportData = () => {
@@ -128,6 +130,17 @@ export function Settings() {
           <span className="row-label">Copia de seguridad</span>
           <Icon name="chevron" size={16} className="row-chevron" />
         </button>
+        <button className="settings-row is-button" onClick={() => setSheet('firebase')}>
+          <RowIcon icon={cloudEnabled ? 'cloud' : 'cloudOff'} tint="blue" />
+          <span className="row-label">
+            Conexión
+            <span className="muted small block">
+              {firebaseConfig ? firebaseConfig.projectId : 'Solo en este móvil'}
+              {customConfig ? ' · Firebase propio' : ''}
+            </span>
+          </span>
+          <Icon name="chevron" size={16} className="row-chevron" />
+        </button>
       </div>
 
       {!isStandalone && (
@@ -154,6 +167,21 @@ export function Settings() {
           Hecho con cariño para dos 💚
         </span>
       </p>
+      {firebaseConfig?.appCheckKey && (
+        <p className="recaptcha-note">
+          Protegido por reCAPTCHA: se aplican la{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+            Política de Privacidad
+          </a>{' '}
+          y las{' '}
+          <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer">
+            Condiciones
+          </a>{' '}
+          de Google.
+        </p>
+      )}
+
+      <FirebaseConnectSheet open={sheet === 'firebase'} onClose={() => setSheet(null)} />
 
       <Sheet open={sheet === 'backup'} onClose={() => setSheet(null)} title="Copia de seguridad" tone="blue">
         <p className="muted small sheet-intro">

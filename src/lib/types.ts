@@ -120,6 +120,111 @@ export interface GoState {
   wins?: Record<string, number>
 }
 
+// ---------- Juego estilo Jaipur (settings/jaipur) ----------
+
+export type JaipurGood = 'diamond' | 'gold' | 'silver' | 'cloth' | 'spice' | 'leather'
+export type JaipurCard = JaipurGood | 'camel'
+
+export interface JaipurPlayer {
+  hand: JaipurGood[]
+  /** Camellos en el corral. */
+  herd: number
+  /** Fichas de mercancía ganadas (valores). */
+  tokens: number[]
+  /** Fichas de bonificación (valores ocultos para el rival). */
+  bonus: number[]
+}
+
+export interface JaipurRound {
+  deck: JaipurCard[]
+  market: JaipurCard[]
+  players: Record<string, JaipurPlayer>
+  /** Fichas que quedan de cada mercancía, la de más valor primero. */
+  piles: Record<JaipurGood, number[]>
+  bonus: { b3: number[]; b4: number[]; b5: number[] }
+  /** uid de quien juega. */
+  turn: string
+  /** Lo último que pasó, para quien vuelve a la app. */
+  last?: { by: string; text: string }
+}
+
+export interface JaipurRoundResult {
+  points: Record<string, number>
+  /** uid que se lleva la ficha de camellos (5 puntos), si no hay empate. */
+  camels?: string
+  winner: string
+}
+
+export interface JaipurGame {
+  id: string
+  players: [string, string]
+  /** Sellos de excelencia: gana quien consigue 2. */
+  seals: Record<string, number>
+  roundNo: number
+  round: JaipurRound
+  status: 'playing' | 'round-over' | 'finished'
+  lastRound?: JaipurRoundResult
+  winner?: string
+  /** uid de quien se rindió. */
+  resigned?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface JaipurState {
+  game?: JaipurGame
+  wins?: Record<string, number>
+}
+
+// ---------- Juego estilo Código Secreto Dúo (settings/codigo) ----------
+
+/** Tarjeta clave de cada uno: 25 letras, g = agente, n = neutral, a = asesino. */
+export type CodigoKey = string
+
+export interface CodigoClue {
+  giver: string
+  word: string
+  n: number
+  /** Resultado de cada intento: g = agente, n = neutral, a = asesino. */
+  results: string
+}
+
+export interface CodigoGame {
+  id: string
+  words: string[]
+  players: [string, string]
+  keys: Record<string, CodigoKey>
+  /** Palabras descubiertas como agente. */
+  found: number[]
+  /** Palabras tocadas que eran neutrales según la clave de quien dio la pista. */
+  neutral: Record<string, number[]>
+  /** Turnos que quedan (empieza en 9). */
+  timer: number
+  phase: 'clue' | 'guess' | 'sudden' | 'won' | 'lost'
+  /** Quien da la pista este turno. */
+  giver: string
+  clue?: { word: string; n: number }
+  guesses: number
+  history: CodigoClue[]
+  /** Palabra que hizo perder (asesino). */
+  lostAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface CodigoState {
+  game?: CodigoGame
+  stats?: { won: number; lost: number }
+}
+
+export interface GameStates {
+  go: GoState
+  jaipur: JaipurState
+  codigo: CodigoState
+}
+
+export type GameId = keyof GameStates
+
 export type Repeat = 'weekly' | 'monthly' | 'yearly'
 
 /**

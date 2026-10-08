@@ -6,7 +6,7 @@ import { useUser } from '../lib/auth'
 import { fromKey, relativeDay, timeLabel, upcoming } from '../lib/calendar'
 import { countdownDateFmt, remaining, useNow } from '../lib/countdown'
 import { useData } from '../lib/data'
-import { useMyGoTurn } from '../lib/goGame'
+import { useMyGameTurns } from '../lib/gameTurns'
 import { usePeople } from '../lib/people'
 import { useShopConfig } from '../lib/shopConfig'
 import { usePhoto } from '../lib/photos'
@@ -36,7 +36,7 @@ export function Home() {
   const listName = (id: string) => lists.find((l) => l.id === id)
   const now = useNow()
   const heroPhoto = usePhoto(home.photo)
-  const goTurn = useMyGoTurn()
+  const { pending: gamesToPlay } = useMyGameTurns()
   const { me, people } = usePeople()
   const partnerName = people.find((p) => p.id !== me)?.name
 
@@ -99,15 +99,30 @@ export function Home() {
           </div>
         )}
 
-        {goTurn && (
-          <button className="home-go" onClick={() => switchTab(paths.games)}>
+        {gamesToPlay.length > 0 && (
+          <button
+            className="home-go"
+            onClick={() =>
+              gamesToPlay.length === 1 ? navigate(paths.game(gamesToPlay[0])) : switchTab(paths.games)
+            }
+          >
             <span className="home-go-stones" aria-hidden>
-              <i className="stone-dot big black" />
-              <i className="stone-dot big white" />
+              {gamesToPlay.length === 1 && gamesToPlay[0] === 'go' ? (
+                <>
+                  <i className="stone-dot big black" />
+                  <i className="stone-dot big white" />
+                </>
+              ) : (
+                <span className="home-go-emoji">
+                  {gamesToPlay.length > 1 ? '🎲' : gamesToPlay[0] === 'jaipur' ? '🐫' : '🕵️'}
+                </span>
+              )}
             </span>
             <span className="home-go-text">
-              <strong>Te toca mover</strong>
-              <span className="muted small block">{partnerName ?? 'Tu pareja'} ya ha jugado en el Go</span>
+              <strong>Te toca jugar</strong>
+              <span className="muted small block">
+                {partnerName ?? 'Tu pareja'} te espera en {listJoin(gamesToPlay.map((g) => GAME_NAMES[g]))}
+              </span>
             </span>
             <Icon name="chevron" size={18} />
           </button>
@@ -170,6 +185,10 @@ export function Home() {
     </Page>
   )
 }
+
+const GAME_NAMES = { go: 'el Go', jaipur: 'el Jaipur', codigo: 'el Código secreto' }
+
+const listJoin = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`)
 
 function MessageCard({ message }: { message: NonNullable<HomeSettings['message']> }) {
   return (
